@@ -1,0 +1,24 @@
+# Xcode
+xcuserdata/
+*.xcodeproj/
+DerivedData/
+build/
+
+# macOS
+.DS_Store
+
+# Swift
+.build/
+.swiftpm/
+Package.resolved
+
+# Build artifacts
+*.ipa
+*.app.dSYM.zip
+*.pkg
+*.app
+*.xcarchive
+AppIcon.iconset/
+
+# Local
+.claude/
