@@ -1,8 +1,16 @@
+<p align="right">
+  <strong>English</strong> | <a href="README.ja.md">日本語</a>
+</p>
+
+<img src="icon_1024.png" width="128" height="128" alt="Fennec" align="left">
+
 # Fennec
 
 Local transcription & AI meeting notes for macOS.
 
 Captures system audio and microphone input simultaneously, with real-time and post-recording speech-to-text transcription. Feed the transcript to your coding agent (Claude Code, Codex, Gemini CLI, etc.) for context-aware meeting minutes. All processing runs on-device — no data is sent to any server.
+
+<br clear="left">
 
 ## Features
 
