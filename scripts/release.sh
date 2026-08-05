@@ -42,7 +42,9 @@ SHA256=$(shasum -a 256 "${ZIP_NAME}" | awk '{print $1}')
 echo "==> SHA256: ${SHA256}"
 
 echo "==> Creating GitHub Release ${TAG}..."
-git tag "${TAG}"
+if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
+  git tag "${TAG}"
+fi
 git push origin "${TAG}"
 gh release create "${TAG}" \
   "${DMG_NAME}" \
