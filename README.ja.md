@@ -25,13 +25,24 @@ macOS向けのローカル文字起こし & AI議事録アプリ。
 - **メニューバー対応** — メニューバーで動作（Dockアイコンの表示/非表示切替可能）
 - **プライバシー最優先** — 音声、文字起こし、翻訳データはすべてMacから外に出ない
 
-## 要件
+## インストール
+
+### Homebrew（推奨）
+
+```bash
+brew tap krgpi/tap
+brew install fennec
+```
+
+## ソースからビルド
+
+### 要件
 
 - macOS 26.0+
 - Xcode 16.0+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
-## ビルド
+### ビルド
 
 ```bash
 xcodegen generate

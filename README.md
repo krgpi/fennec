@@ -25,13 +25,24 @@ Captures system audio and microphone input simultaneously, with real-time and po
 - **Menu bar support** — Runs in the menu bar with optional Dock icon
 - **Privacy first** — Audio, transcripts, and translations never leave your Mac
 
-## Requirements
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew tap krgpi/tap
+brew install fennec
+```
+
+## Build from source
+
+### Requirements
 
 - macOS 26.0+
 - Xcode 16.0+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
-## Build
+### Build
 
 ```bash
 xcodegen generate
