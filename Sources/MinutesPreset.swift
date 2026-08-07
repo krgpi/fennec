@@ -52,6 +52,8 @@ struct MinutesPreset: Identifiable, Codable, Hashable {
 }
 
 final class MinutesPresetStore: ObservableObject {
+    static let shared = MinutesPresetStore()
+
     @Published var presets: [MinutesPreset] = []
 
     private static let key = "minutesPresets"
@@ -78,6 +80,13 @@ final class MinutesPresetStore: ObservableObject {
             presets.append(preset)
         }
         presets.sort { $0.lastUsedAt > $1.lastUsedAt }
+        save()
+    }
+
+    func rename(_ preset: MinutesPreset, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let idx = presets.firstIndex(where: { $0.id == preset.id }) else { return }
+        presets[idx].name = trimmed
         save()
     }
 

@@ -16,7 +16,20 @@ struct MinutesSheet: View {
     @State private var backend: MinutesBackend = .claude
     @State private var model = "sonnet"
     @State private var presetName = ""
+    @State private var saveAsPreset = false
     @State private var availableBackends: [MinutesBackend] = []
+    @State private var presetBaseline: PresetSnapshot?
+    @State private var showUpdatePresetAlert = false
+    @State private var isRenamingPreset = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
+
+    private struct PresetSnapshot: Equatable {
+        var contextPath: String?
+        var outputPath: String?
+        var backend: MinutesBackend
+        var model: String
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -24,17 +37,38 @@ struct MinutesSheet: View {
                 .font(.title2.bold())
 
             if !presetStore.presets.isEmpty {
-                Picker("プリセット", selection: $selectedPresetId) {
-                    Text("新規作成").tag("")
-                    Divider()
-                    ForEach(presetStore.presets) { preset in
-                        Text("\(preset.name) (\(preset.backend.displayName))").tag(preset.id.uuidString)
+                HStack {
+                    Picker("プリセット", selection: $selectedPresetId) {
+                        Text("プリセットを使わない").tag("")
+                        Divider()
+                        ForEach(presetStore.presets) { preset in
+                            Text("\(preset.name) (\(preset.backend.displayName))").tag(preset.id.uuidString)
+                        }
                     }
-                }
-                .onChange(of: selectedPresetId) { _, newValue in
-                    if let preset = presetStore.presets.first(where: { $0.id.uuidString == newValue }) {
-                        applyPreset(preset)
+                    .onChange(of: selectedPresetId) { _, newValue in
+                        if let preset = presetStore.presets.first(where: { $0.id.uuidString == newValue }) {
+                            applyPreset(preset)
+                        } else {
+                            presetBaseline = nil
+                        }
                     }
+
+                    Button {
+                        renameText = selectedPreset?.name ?? ""
+                        isRenamingPreset = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .help("プリセット名を変更")
+                    .disabled(selectedPreset == nil)
+
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .help("プリセットを削除")
+                    .disabled(selectedPreset == nil)
                 }
             }
 
@@ -42,7 +76,7 @@ struct MinutesSheet: View {
                 chooseFolder { url in
                     contextFolderURL = url
                     if sameAsContext { outputFolderURL = url }
-                    if presetName.isEmpty || selectedPresetId == nil {
+                    if selectedPreset == nil, presetName.isEmpty {
                         presetName = url.lastPathComponent
                     }
                 }
@@ -78,9 +112,12 @@ struct MinutesSheet: View {
             }
             .pickerStyle(.segmented)
 
-            if selectedPresetId == nil {
-                TextField("プリセット名", text: $presetName)
-                    .textFieldStyle(.roundedBorder)
+            if selectedPreset == nil {
+                Toggle("この設定をプリセットとして保存する", isOn: $saveAsPreset)
+                if saveAsPreset {
+                    TextField("プリセット名", text: $presetName)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             if generator.isRunning {
@@ -132,13 +169,41 @@ struct MinutesSheet: View {
                 Spacer()
                 Button("閉じる") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("生成") { startGeneration() }
+                Button("生成") { generateTapped() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canGenerate)
             }
         }
         .padding(20)
         .frame(width: 500)
+        .alert("プリセットを更新しますか？", isPresented: $showUpdatePresetAlert) {
+            Button("更新して生成") { startGeneration(persist: true) }
+            Button("更新せずに生成") { startGeneration(persist: false) }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("現在の設定はプリセット「\(selectedPreset?.name ?? "")」の内容と異なります。")
+        }
+        .alert("プリセット名を変更", isPresented: $isRenamingPreset) {
+            TextField("プリセット名", text: $renameText)
+            Button("キャンセル", role: .cancel) {}
+            Button("変更") {
+                if let preset = selectedPreset {
+                    presetStore.rename(preset, to: renameText)
+                    presetName = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        .alert("プリセットを削除しますか？", isPresented: $showDeleteConfirm) {
+            Button("キャンセル", role: .cancel) {}
+            Button("削除", role: .destructive) {
+                if let preset = selectedPreset {
+                    presetStore.delete(preset)
+                    selectedPresetId = ""
+                }
+            }
+        } message: {
+            Text("プリセット「\(selectedPreset?.name ?? "")」を削除します。現在の設定はそのまま残ります。")
+        }
         .task {
             let backends = await Task.detached {
                 MinutesBackend.availableBackends
@@ -153,6 +218,24 @@ struct MinutesSheet: View {
 
     private var canGenerate: Bool {
         !generator.isRunning && contextFolderURL != nil && outputFolderURL != nil
+    }
+
+    private var selectedPreset: MinutesPreset? {
+        presetStore.presets.first { $0.id.uuidString == selectedPresetId }
+    }
+
+    private var currentSnapshot: PresetSnapshot {
+        PresetSnapshot(
+            contextPath: contextFolderURL?.path,
+            outputPath: outputFolderURL?.path,
+            backend: backend,
+            model: model
+        )
+    }
+
+    private var hasPresetChanges: Bool {
+        guard let presetBaseline else { return false }
+        return presetBaseline != currentSnapshot
     }
 
     @ViewBuilder
@@ -194,11 +277,20 @@ struct MinutesSheet: View {
                 } else {
                     sameAsContext = false
                 }
+                presetBaseline = currentSnapshot
             }
         }
     }
 
-    private func startGeneration() {
+    private func generateTapped() {
+        if selectedPreset != nil, hasPresetChanges {
+            showUpdatePresetAlert = true
+        } else {
+            startGeneration(persist: true)
+        }
+    }
+
+    private func startGeneration(persist: Bool) {
         guard let contextURL = contextFolderURL,
               let outputURL = outputFolderURL else { return }
 
@@ -209,25 +301,36 @@ struct MinutesSheet: View {
         }
 
         var preset: MinutesPreset
-        if !selectedPresetId.isEmpty, let existing = presetStore.presets.first(where: { $0.id.uuidString == selectedPresetId }) {
+        var savedPresetId: UUID?
+        if let existing = selectedPreset {
             preset = existing
             preset.contextFolderBookmark = ctxBookmark
             preset.outputFolderBookmark = outBookmark
             preset.backend = backend
             preset.model = model
             preset.lastUsedAt = Date()
+            if persist {
+                presetStore.addOrUpdate(preset)
+                presetBaseline = currentSnapshot
+                savedPresetId = preset.id
+            }
         } else {
-            let name = presetName.isEmpty ? contextURL.lastPathComponent : presetName
+            let trimmedName = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
             preset = MinutesPreset(
-                name: name,
+                name: trimmedName.isEmpty ? contextURL.lastPathComponent : trimmedName,
                 contextFolderBookmark: ctxBookmark,
                 outputFolderBookmark: outBookmark,
                 backend: backend,
                 model: model
             )
-            selectedPresetId = preset.id.uuidString
+            if saveAsPreset {
+                presetStore.addOrUpdate(preset)
+                presetBaseline = currentSnapshot
+                savedPresetId = preset.id
+                selectedPresetId = preset.id.uuidString
+                saveAsPreset = false
+            }
         }
-        presetStore.addOrUpdate(preset)
 
         Task {
             await generator.generate(
@@ -243,7 +346,7 @@ struct MinutesSheet: View {
                 try? fm.copyItem(at: outputURL, to: dest)
                 var updated = session
                 updated.minutesFile = minutesName
-                updated.minutesPresetId = preset.id
+                updated.minutesPresetId = savedPresetId
                 recordingStore.saveMetadata(for: updated)
                 recordingStore.loadSessions()
             }
