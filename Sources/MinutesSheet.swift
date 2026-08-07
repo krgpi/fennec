@@ -1,6 +1,14 @@
 import AppKit
 import SwiftUI
 
+private extension View {
+    func settingsCaption() -> some View {
+        font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 struct MinutesSheet: View {
     let session: RecordingSession
     let transcript: String
@@ -40,7 +48,7 @@ struct MinutesSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 500)
+        .frame(width: 540)
         .alert("プリセットを更新しますか？", isPresented: $showUpdatePresetAlert) {
             Button("更新して生成") { startGeneration(persist: true) }
             Button("更新せずに生成") { startGeneration(persist: false) }
@@ -94,97 +102,118 @@ struct MinutesSheet: View {
     }
 
     private var settingsView: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             Text("議事録を作成")
                 .font(.title2.bold())
+                .frame(maxWidth: .infinity, alignment: .center)
 
             if !presetStore.presets.isEmpty {
-                HStack {
-                    Picker("プリセット", selection: $selectedPresetId) {
-                        Text("プリセットを使わない").tag("")
-                        Divider()
-                        ForEach(presetStore.presets) { preset in
-                            Text("\(preset.name) (\(preset.backend.displayName))").tag(preset.id.uuidString)
+                settingsRow("プリセット:") {
+                    HStack(spacing: 6) {
+                        Picker("", selection: $selectedPresetId) {
+                            Text("プリセットを使わない").tag("")
+                            Divider()
+                            ForEach(presetStore.presets) { preset in
+                                Text("\(preset.name) (\(preset.backend.displayName))").tag(preset.id.uuidString)
+                            }
+                        }
+                        .labelsHidden()
+                        .onChange(of: selectedPresetId) { _, newValue in
+                            if let preset = presetStore.presets.first(where: { $0.id.uuidString == newValue }) {
+                                applyPreset(preset)
+                            } else {
+                                presetBaseline = nil
+                            }
+                        }
+
+                        Button {
+                            renameText = selectedPreset?.name ?? ""
+                            isRenamingPreset = true
+                        } label: {
+                            Image(systemName: "pencil")
+                        }
+                        .help("プリセット名を変更")
+                        .disabled(selectedPreset == nil)
+
+                        Button {
+                            showDeleteConfirm = true
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .help("プリセットを削除")
+                        .disabled(selectedPreset == nil)
+                    }
+                }
+
+                Divider()
+            }
+
+            settingsRow("コンテキスト:") {
+                folderField(url: contextFolderURL) {
+                    chooseFolder { url in
+                        contextFolderURL = url
+                        if sameAsContext { outputFolderURL = url }
+                        if selectedPreset == nil, presetName.isEmpty {
+                            presetName = url.lastPathComponent
                         }
                     }
-                    .onChange(of: selectedPresetId) { _, newValue in
-                        if let preset = presetStore.presets.first(where: { $0.id.uuidString == newValue }) {
-                            applyPreset(preset)
-                        } else {
-                            presetBaseline = nil
-                        }
-                    }
+                }
+                Text("議事録生成の参考にするドキュメントのフォルダを選びます。")
+                    .settingsCaption()
+            }
 
-                    Button {
-                        renameText = selectedPreset?.name ?? ""
-                        isRenamingPreset = true
-                    } label: {
-                        Image(systemName: "pencil")
+            settingsRow("出力先:") {
+                Toggle("コンテキストフォルダと同じ", isOn: $sameAsContext)
+                    .onChange(of: sameAsContext) { _, same in
+                        if same { outputFolderURL = contextFolderURL }
                     }
-                    .help("プリセット名を変更")
-                    .disabled(selectedPreset == nil)
-
-                    Button {
-                        showDeleteConfirm = true
-                    } label: {
-                        Image(systemName: "trash")
+                if !sameAsContext {
+                    folderField(url: outputFolderURL) {
+                        chooseFolder { url in outputFolderURL = url }
                     }
-                    .help("プリセットを削除")
-                    .disabled(selectedPreset == nil)
+                }
+                if outputFolderURL == nil {
+                    Text("未設定の場合、コンテキストなしで生成し録音フォルダに保存します。")
+                        .settingsCaption()
                 }
             }
 
-            folderSection(label: "コンテキストフォルダ", url: contextFolderURL) {
-                chooseFolder { url in
-                    contextFolderURL = url
-                    if sameAsContext { outputFolderURL = url }
-                    if selectedPreset == nil, presetName.isEmpty {
-                        presetName = url.lastPathComponent
-                    }
-                }
-            }
-
-            Toggle("出力先をコンテキストフォルダと同じにする", isOn: $sameAsContext)
-                .onChange(of: sameAsContext) { _, same in
-                    if same { outputFolderURL = contextFolderURL }
-                }
-
-            if !sameAsContext {
-                folderSection(label: "出力先フォルダ", url: outputFolderURL) {
-                    chooseFolder { url in outputFolderURL = url }
-                }
-            }
-
-            if outputFolderURL == nil {
-                Text("フォルダが未設定の場合、コンテキストなしで生成し録音フォルダに保存します")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Divider()
 
             if availableBackends.count > 1 {
-                Picker("バックエンド", selection: $backend) {
-                    ForEach(availableBackends, id: \.self) { b in
-                        Text(b.displayName).tag(b)
+                settingsRow("バックエンド:") {
+                    Picker("", selection: $backend) {
+                        ForEach(availableBackends, id: \.self) { b in
+                            Text(b.displayName).tag(b)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .onChange(of: backend) { _, newBackend in
+                        model = newBackend.defaultModel
                     }
                 }
-                .pickerStyle(.segmented)
-                .onChange(of: backend) { _, newBackend in
-                    model = newBackend.defaultModel
-                }
             }
 
-            Picker("モデル", selection: $model) {
-                ForEach(backend.availableModels, id: \.id) { m in
-                    Text(m.name).tag(m.id)
+            settingsRow("モデル:") {
+                Picker("", selection: $model) {
+                    ForEach(backend.availableModels, id: \.id) { m in
+                        Text(m.name).tag(m.id)
+                    }
                 }
+                .labelsHidden()
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             if selectedPreset == nil {
-                Toggle("この設定をプリセットとして保存する", isOn: $saveAsPreset)
-                if saveAsPreset {
-                    TextField("プリセット名", text: $presetName)
-                        .textFieldStyle(.roundedBorder)
+                Divider()
+
+                settingsRow("プリセット保存:") {
+                    Toggle("この設定をプリセットとして保存", isOn: $saveAsPreset)
+                    if saveAsPreset {
+                        TextField("プリセット名", text: $presetName)
+                            .textFieldStyle(.roundedBorder)
+                    }
                 }
             }
 
@@ -195,6 +224,34 @@ struct MinutesSheet: View {
                 Button("生成") { generateTapped() }
                     .keyboardShortcut(.defaultAction)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func settingsRow<Content: View>(
+        _ label: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(label)
+                .frame(width: settingsLabelWidth, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 6) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var settingsLabelWidth: CGFloat { 110 }
+
+    private func folderField(url: URL?, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Text(url?.path.replacingOccurrences(of: NSHomeDirectory(), with: "~") ?? "未選択")
+                .foregroundStyle(url == nil ? .secondary : .primary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+            Button("選択…", action: action)
         }
     }
 
@@ -275,20 +332,6 @@ struct MinutesSheet: View {
     private var hasPresetChanges: Bool {
         guard let presetBaseline else { return false }
         return presetBaseline != currentSnapshot
-    }
-
-    @ViewBuilder
-    private func folderSection(label: String, url: URL?, action: @escaping () -> Void) -> some View {
-        HStack {
-            Text(label)
-                .frame(width: 140, alignment: .leading)
-            Text(url?.path.replacingOccurrences(of: NSHomeDirectory(), with: "~") ?? "未選択")
-                .foregroundStyle(url == nil ? .secondary : .primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer()
-            Button("選択…", action: action)
-        }
     }
 
     private func chooseFolder(completion: @escaping (URL) -> Void) {
