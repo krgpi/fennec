@@ -3,14 +3,14 @@ import Foundation
 struct MinutesPreset: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
-    var contextFolderBookmark: Data
-    var outputFolderBookmark: Data
+    var contextFolderBookmark: Data?
+    var outputFolderBookmark: Data?
     var backend: MinutesBackend
     var model: String
     var createdAt: Date
     var lastUsedAt: Date
 
-    init(id: UUID = UUID(), name: String, contextFolderBookmark: Data, outputFolderBookmark: Data, backend: MinutesBackend = .claude, model: String? = nil) {
+    init(id: UUID = UUID(), name: String, contextFolderBookmark: Data? = nil, outputFolderBookmark: Data? = nil, backend: MinutesBackend = .claude, model: String? = nil) {
         self.id = id
         self.name = name
         self.contextFolderBookmark = contextFolderBookmark
@@ -23,11 +23,11 @@ struct MinutesPreset: Identifiable, Codable, Hashable {
     }
 
     func resolveContextFolder() -> URL? {
-        Self.resolveBookmark(contextFolderBookmark)
+        contextFolderBookmark.flatMap(Self.resolveBookmark)
     }
 
     func resolveOutputFolder() -> URL? {
-        Self.resolveBookmark(outputFolderBookmark)
+        outputFolderBookmark.flatMap(Self.resolveBookmark)
     }
 
     private static func resolveBookmark(_ data: Data) -> URL? {

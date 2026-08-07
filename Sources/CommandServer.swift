@@ -356,6 +356,16 @@ final class CommandServer {
         throw CommandError(message: "preset not found: \(name)")
     }
 
+    private func requestedBackend(_ args: [String: String]) throws -> MinutesBackend {
+        guard let raw = args["backend"], !raw.isEmpty else {
+            return MinutesBackend.availableBackends.first ?? .claude
+        }
+        guard let parsed = MinutesBackend(rawValue: raw) else {
+            throw CommandError(message: "unknown backend: \(raw) (claude | codex | gemini)")
+        }
+        return parsed
+    }
+
     private func presetDict(_ preset: MinutesPreset) -> [String: Any] {
         var dict: [String: Any] = [
             "id": preset.id.uuidString,
@@ -370,7 +380,10 @@ final class CommandServer {
 
     private func handleMinutes(_ args: [String: String], send: ([String: Any]) -> Void) throws -> [String: Any] {
         let session = try findSession(args)
-        var preset = try findPreset(args)
+        let usesPreset = !(args["preset"] ?? "").isEmpty
+        var preset = usesPreset
+            ? try findPreset(args)
+            : MinutesPreset(name: session.id, backend: try requestedBackend(args), model: args["model"])
         guard let transcriptURL = session.transcriptURL,
               let transcript = try? String(contentsOf: transcriptURL, encoding: .utf8),
               !transcript.isEmpty else {
@@ -381,9 +394,16 @@ final class CommandServer {
         preset.lastUsedAt = Date()
 
         let result: (URL?, String?) = onMain {
-            self.presetStore().addOrUpdate(preset)
+            if usesPreset {
+                self.presetStore().addOrUpdate(preset)
+            }
             let generator = MinutesGenerator()
-            await generator.generate(transcript: transcript, preset: preset, sessionDate: session.id)
+            await generator.generate(
+                transcript: transcript,
+                preset: preset,
+                sessionDate: session.id,
+                defaultOutputFolder: session.folderURL
+            )
             return (generator.outputFileURL, generator.errorMessage)
         }
         if let error = result.1 { throw CommandError(message: error) }
@@ -394,12 +414,14 @@ final class CommandServer {
         onMain {
             let minutesName = "minutes.md"
             let dest = session.folderURL.appendingPathComponent(minutesName)
-            let fm = FileManager.default
-            try? fm.removeItem(at: dest)
-            try? fm.copyItem(at: outputURL, to: dest)
+            if outputURL != dest {
+                let fm = FileManager.default
+                try? fm.removeItem(at: dest)
+                try? fm.copyItem(at: outputURL, to: dest)
+            }
             var updated = session
             updated.minutesFile = minutesName
-            updated.minutesPresetId = preset.id
+            updated.minutesPresetId = usesPreset ? preset.id : nil
             self.recordingStore.saveMetadata(for: updated)
             self.recordingStore.loadSessions()
         }
@@ -424,13 +446,7 @@ final class CommandServer {
         }
         let outputPath = args["output"] ?? contextPath
 
-        var backend = MinutesBackend.claude
-        if let raw = args["backend"] {
-            guard let parsed = MinutesBackend(rawValue: raw) else {
-                throw CommandError(message: "unknown backend: \(raw) (claude | codex | gemini)")
-            }
-            backend = parsed
-        }
+        let backend = try requestedBackend(args)
 
         let fm = FileManager.default
         var isDir: ObjCBool = false

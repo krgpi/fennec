@@ -93,6 +93,12 @@ struct MinutesSheet: View {
                 }
             }
 
+            if outputFolderURL == nil {
+                Text("フォルダが未設定の場合、コンテキストなしで生成し録音フォルダに保存します")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             if availableBackends.count > 1 {
                 Picker("バックエンド", selection: $backend) {
                     ForEach(availableBackends, id: \.self) { b in
@@ -217,7 +223,7 @@ struct MinutesSheet: View {
     }
 
     private var canGenerate: Bool {
-        !generator.isRunning && contextFolderURL != nil && outputFolderURL != nil
+        !generator.isRunning
     }
 
     private var selectedPreset: MinutesPreset? {
@@ -291,13 +297,21 @@ struct MinutesSheet: View {
     }
 
     private func startGeneration(persist: Bool) {
-        guard let contextURL = contextFolderURL,
-              let outputURL = outputFolderURL else { return }
-
-        guard let ctxBookmark = MinutesPreset.createBookmark(for: contextURL),
-              let outBookmark = MinutesPreset.createBookmark(for: outputURL) else {
-            generator.errorMessage = "フォルダのブックマーク作成に失敗しました"
-            return
+        var ctxBookmark: Data?
+        var outBookmark: Data?
+        if let contextURL = contextFolderURL {
+            guard let bookmark = MinutesPreset.createBookmark(for: contextURL) else {
+                generator.errorMessage = "フォルダのブックマーク作成に失敗しました"
+                return
+            }
+            ctxBookmark = bookmark
+        }
+        if let outputURL = outputFolderURL {
+            guard let bookmark = MinutesPreset.createBookmark(for: outputURL) else {
+                generator.errorMessage = "フォルダのブックマーク作成に失敗しました"
+                return
+            }
+            outBookmark = bookmark
         }
 
         var preset: MinutesPreset
@@ -317,7 +331,7 @@ struct MinutesSheet: View {
         } else {
             let trimmedName = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
             preset = MinutesPreset(
-                name: trimmedName.isEmpty ? contextURL.lastPathComponent : trimmedName,
+                name: trimmedName.isEmpty ? (contextFolderURL?.lastPathComponent ?? session.id) : trimmedName,
                 contextFolderBookmark: ctxBookmark,
                 outputFolderBookmark: outBookmark,
                 backend: backend,
@@ -336,14 +350,17 @@ struct MinutesSheet: View {
             await generator.generate(
                 transcript: transcript,
                 preset: preset,
-                sessionDate: session.id
+                sessionDate: session.id,
+                defaultOutputFolder: session.folderURL
             )
             if let outputURL = generator.outputFileURL {
                 let minutesName = "minutes.md"
                 let dest = session.folderURL.appendingPathComponent(minutesName)
-                let fm = FileManager.default
-                try? fm.removeItem(at: dest)
-                try? fm.copyItem(at: outputURL, to: dest)
+                if outputURL != dest {
+                    let fm = FileManager.default
+                    try? fm.removeItem(at: dest)
+                    try? fm.copyItem(at: outputURL, to: dest)
+                }
                 var updated = session
                 updated.minutesFile = minutesName
                 updated.minutesPresetId = savedPresetId

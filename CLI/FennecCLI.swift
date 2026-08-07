@@ -332,14 +332,24 @@ struct Minutes: ParsableCommand {
     @Argument(help: "Session ID (or `latest`).")
     var sessionId: String
 
-    @Option(help: "Preset name (see `fennec preset list`).")
-    var preset: String
+    @Option(help: "Preset name (see `fennec preset list`). Omit to generate without a preset.")
+    var preset: String?
+
+    @Option(help: "Backend when no preset is used (claude | codex | gemini).")
+    var backend: String?
+
+    @Option(help: "Model when no preset is used.")
+    var model: String?
 
     func run() throws {
         do {
+            var args = ["sessionId": sessionId]
+            if let preset { args["preset"] = preset }
+            if let backend { args["backend"] = backend }
+            if let model { args["model"] = model }
             let data = try IPCClient.request(
                 "minutes",
-                ["sessionId": sessionId, "preset": preset],
+                args,
                 onProgress: progressPrinter
             ) as? [String: Any]
             print("minutes: \(data?["outputFile"] as? String ?? "")")

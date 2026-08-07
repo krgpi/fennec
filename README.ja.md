@@ -48,6 +48,7 @@ fennec record start           # 録音開始
 fennec record stop            # 録音停止
 fennec sessions list          # 録音セッション一覧
 fennec transcribe latest      # 文字起こし（--engine apple|whisper）
+fennec minutes latest                 # プリセットなしで議事録生成（録音フォルダに保存）
 fennec minutes latest --preset work   # プリセットを使って議事録生成
 fennec preset list            # 議事録プリセット管理（list/show/create/delete）
 fennec config list            # 設定の読み書き（list/get/set）

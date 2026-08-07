@@ -139,12 +139,15 @@ final class MinutesGenerator: ObservableObject {
 
     private var process: Process?
 
-    func generate(transcript: String, preset: MinutesPreset, sessionDate: String) async {
-        guard let contextFolder = preset.resolveContextFolder(),
-              let outputFolder = preset.resolveOutputFolder() else {
+    func generate(transcript: String, preset: MinutesPreset, sessionDate: String, defaultOutputFolder: URL) async {
+        let contextFolder = preset.resolveContextFolder()
+        let configuredOutputFolder = preset.resolveOutputFolder()
+        guard preset.contextFolderBookmark == nil || contextFolder != nil,
+              preset.outputFolderBookmark == nil || configuredOutputFolder != nil else {
             errorMessage = "フォルダにアクセスできません"
             return
         }
+        let outputFolder = configuredOutputFolder ?? defaultOutputFolder
 
         guard let cliPath = preset.backend.findCLI() else {
             errorMessage = "\(preset.backend.displayName) CLI が見つかりません"
@@ -156,9 +159,11 @@ final class MinutesGenerator: ObservableObject {
         errorMessage = nil
         outputFileURL = nil
 
-        let claudeMd = Self.loadClaudeMd(in: contextFolder)
-        let existingNames = Self.listExistingFileNames(in: outputFolder)
-        let previousMinutes = Self.findLatestMinutes(in: outputFolder)
+        let claudeMd = contextFolder.flatMap { Self.loadClaudeMd(in: $0) }
+        let existingNames = configuredOutputFolder.map { Self.listExistingFileNames(in: $0) } ?? []
+        let previousMinutes = configuredOutputFolder.flatMap { Self.findLatestMinutes(in: $0) }
+
+        let contextInstruction = contextFolder == nil ? "" : "\n- コンテキストフォルダ内の関連ファイルも参考にしてよい"
 
         var fileNameInstruction = ""
         if existingNames.isEmpty {
@@ -176,8 +181,7 @@ final class MinutesGenerator: ObservableObject {
         # 指示
         - **出力の1行目にファイル名のみを記述**（拡張子 .md 付き、それ以外のテキストは不要）
         - 2行目以降に Markdown 形式の議事録を出力
-        - 参加者、議題、決定事項、アクションアイテムを整理
-        - コンテキストフォルダ内の関連ファイルも参考にしてよい
+        - 参加者、議題、決定事項、アクションアイテムを整理\(contextInstruction)
         - 議事録のみを出力し、余計な説明は不要
 
         # ファイル名
@@ -203,7 +207,7 @@ final class MinutesGenerator: ObservableObject {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: cliPath)
         proc.arguments = backend.buildArguments(model: preset.model, prompt: prompt, outputFile: codexOutputFile)
-        proc.currentDirectoryURL = contextFolder
+        proc.currentDirectoryURL = contextFolder ?? outputFolder
 
         proc.environment = Self.shellEnvironment()
 
@@ -258,7 +262,8 @@ final class MinutesGenerator: ObservableObject {
 
         let (fileName, body) = Self.extractFileName(from: output, fallback: "minutes_\(sessionDate).md")
         output = body
-        let fileURL = outputFolder.appendingPathComponent(fileName)
+        let fileURL = configuredOutputFolder?.appendingPathComponent(fileName)
+            ?? outputFolder.appendingPathComponent("minutes.md")
         do {
             try output.write(to: fileURL, atomically: true, encoding: .utf8)
             self.outputFileURL = fileURL

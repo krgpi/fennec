@@ -48,6 +48,7 @@ fennec record start           # Start recording
 fennec record stop            # Stop recording
 fennec sessions list          # List recording sessions
 fennec transcribe latest      # Transcribe a session (--engine apple|whisper)
+fennec minutes latest                 # Generate minutes (no preset; saved in the session folder)
 fennec minutes latest --preset work   # Generate minutes with a preset
 fennec preset list            # Manage minutes presets (list/show/create/delete)
 fennec config list            # Read & write app settings (list/get/set)
