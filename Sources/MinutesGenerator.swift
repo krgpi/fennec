@@ -138,6 +138,7 @@ final class MinutesGenerator: ObservableObject {
     @Published var outputFileURL: URL?
 
     private var process: Process?
+    private var wasCancelled = false
 
     func generate(transcript: String, preset: MinutesPreset, sessionDate: String, defaultOutputFolder: URL) async {
         let contextFolder = preset.resolveContextFolder()
@@ -155,6 +156,7 @@ final class MinutesGenerator: ObservableObject {
         }
 
         isRunning = true
+        wasCancelled = false
         output = ""
         errorMessage = nil
         outputFileURL = nil
@@ -256,7 +258,9 @@ final class MinutesGenerator: ObservableObject {
 
         if status != 0 {
             isRunning = false
-            errorMessage = "生成に失敗しました (exit \(status))\(stderrResult.isEmpty ? "" : ": \(stderrResult)")"
+            if !wasCancelled {
+                errorMessage = "生成に失敗しました (exit \(status))\(stderrResult.isEmpty ? "" : ": \(stderrResult)")"
+            }
             return
         }
 
@@ -275,6 +279,7 @@ final class MinutesGenerator: ObservableObject {
     }
 
     func cancel() {
+        wasCancelled = true
         process?.terminate()
     }
 

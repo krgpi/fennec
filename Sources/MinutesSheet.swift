@@ -32,6 +32,68 @@ struct MinutesSheet: View {
     }
 
     var body: some View {
+        Group {
+            switch phase {
+            case .settings: settingsView
+            case .running: runningView
+            case .finished: finishedView
+            }
+        }
+        .padding(20)
+        .frame(width: 500)
+        .alert("プリセットを更新しますか？", isPresented: $showUpdatePresetAlert) {
+            Button("更新して生成") { startGeneration(persist: true) }
+            Button("更新せずに生成") { startGeneration(persist: false) }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("現在の設定はプリセット「\(selectedPreset?.name ?? "")」の内容と異なります。")
+        }
+        .alert("プリセット名を変更", isPresented: $isRenamingPreset) {
+            TextField("プリセット名", text: $renameText)
+            Button("キャンセル", role: .cancel) {}
+            Button("変更") {
+                if let preset = selectedPreset {
+                    presetStore.rename(preset, to: renameText)
+                    presetName = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        .alert("プリセットを削除しますか？", isPresented: $showDeleteConfirm) {
+            Button("キャンセル", role: .cancel) {}
+            Button("削除", role: .destructive) {
+                if let preset = selectedPreset {
+                    presetStore.delete(preset)
+                    selectedPresetId = ""
+                }
+            }
+        } message: {
+            Text("プリセット「\(selectedPreset?.name ?? "")」を削除します。現在の設定はそのまま残ります。")
+        }
+        .task {
+            let backends = await Task.detached {
+                MinutesBackend.availableBackends
+            }.value
+            availableBackends = backends
+            if backend.findCLI() == nil, let first = backends.first {
+                backend = first
+                model = first.defaultModel
+            }
+        }
+    }
+
+    private enum Phase {
+        case settings
+        case running
+        case finished
+    }
+
+    private var phase: Phase {
+        if generator.isRunning { return .running }
+        if generator.outputFileURL != nil || generator.errorMessage != nil { return .finished }
+        return .settings
+    }
+
+    private var settingsView: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("議事録を作成")
                 .font(.title2.bold())
@@ -126,29 +188,56 @@ struct MinutesSheet: View {
                 }
             }
 
-            if generator.isRunning {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("生成中...")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button("キャンセル") { generator.cancel() }
-                    }
-                    if !generator.output.isEmpty {
-                        ScrollView {
-                            Text(generator.output)
-                                .font(.system(.caption, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .textSelection(.enabled)
-                        }
-                        .frame(maxHeight: 200)
+            HStack {
+                Spacer()
+                Button("閉じる") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("生成") { generateTapped() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    private var runningView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .controlSize(.large)
+            Text("議事録を生成しています…")
+                .font(.headline)
+            Text("完了までしばらくかかります")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("キャンセル") { generator.cancel() }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
+
+    @ViewBuilder
+    private var finishedView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let url = generator.outputFileURL {
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.green)
+                    Text("議事録を保存しました")
+                        .font(.headline)
+                    Text(url.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                    Button("Finder で開く") {
+                        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
                     }
                 }
-            }
-
-            if let error = generator.errorMessage {
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else if let error = generator.errorMessage {
+                Text("生成に失敗しました")
+                    .font(.headline)
                 ScrollView {
                     Text(error)
                         .foregroundStyle(.red)
@@ -159,71 +248,15 @@ struct MinutesSheet: View {
                 .frame(maxHeight: 200)
             }
 
-            if let url = generator.outputFileURL {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("議事録を保存しました")
-                    Spacer()
-                    Button("Finder で開く") {
-                        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
-                    }
-                }
-            }
-
             HStack {
                 Spacer()
+                if generator.outputFileURL == nil {
+                    Button("設定に戻る") { generator.errorMessage = nil }
+                }
                 Button("閉じる") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("生成") { generateTapped() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(!canGenerate)
             }
         }
-        .padding(20)
-        .frame(width: 500)
-        .alert("プリセットを更新しますか？", isPresented: $showUpdatePresetAlert) {
-            Button("更新して生成") { startGeneration(persist: true) }
-            Button("更新せずに生成") { startGeneration(persist: false) }
-            Button("キャンセル", role: .cancel) {}
-        } message: {
-            Text("現在の設定はプリセット「\(selectedPreset?.name ?? "")」の内容と異なります。")
-        }
-        .alert("プリセット名を変更", isPresented: $isRenamingPreset) {
-            TextField("プリセット名", text: $renameText)
-            Button("キャンセル", role: .cancel) {}
-            Button("変更") {
-                if let preset = selectedPreset {
-                    presetStore.rename(preset, to: renameText)
-                    presetName = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-            }
-        }
-        .alert("プリセットを削除しますか？", isPresented: $showDeleteConfirm) {
-            Button("キャンセル", role: .cancel) {}
-            Button("削除", role: .destructive) {
-                if let preset = selectedPreset {
-                    presetStore.delete(preset)
-                    selectedPresetId = ""
-                }
-            }
-        } message: {
-            Text("プリセット「\(selectedPreset?.name ?? "")」を削除します。現在の設定はそのまま残ります。")
-        }
-        .task {
-            let backends = await Task.detached {
-                MinutesBackend.availableBackends
-            }.value
-            availableBackends = backends
-            if backend.findCLI() == nil, let first = backends.first {
-                backend = first
-                model = first.defaultModel
-            }
-        }
-    }
-
-    private var canGenerate: Bool {
-        !generator.isRunning
     }
 
     private var selectedPreset: MinutesPreset? {
