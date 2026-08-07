@@ -40,11 +40,6 @@ struct EngineSettingsView: View {
     @State private var selectedLanguage = AppLanguage.current
     @State private var showLanguageRestartHint = false
 
-    private static let supportedLocales: [Locale] = {
-        SFSpeechRecognizer.supportedLocales()
-            .sorted { $0.identifier < $1.identifier }
-    }()
-
     private static func flagEmoji(for locale: Locale) -> String {
         let regionCode: String? = if let region = locale.region?.identifier {
             region
@@ -361,7 +356,7 @@ struct EngineSettingsView: View {
                 GroupBox {
                     VStack(alignment: .leading, spacing: 4) {
                         Picker("文字起こし言語", selection: $captureManager.transcriptionLocale) {
-                            ForEach(Self.supportedLocales, id: \.identifier) { locale in
+                            ForEach(TranscriptionLocale.supported, id: \.identifier) { locale in
                                 Text("\(Self.flagEmoji(for: locale)) \(AppLanguage.current.displayLocale.localizedString(forIdentifier: locale.identifier) ?? locale.identifier)")
                                     .tag(locale)
                             }

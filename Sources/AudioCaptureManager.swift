@@ -103,11 +103,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
     @Published var sysAudioLevel: Float = 0
     @Published var micAudioLevel: Float = 0
     @Published var liveTranscriptDiag: String = ""
-    @Published var transcriptionLocale: Locale = {
-        let stored = UserDefaults.standard.string(forKey: "transcriptionLocale")
-        if let stored { return Locale(identifier: stored) }
-        return Locale.current
-    }() {
+    @Published var transcriptionLocale: Locale = TranscriptionLocale.stored {
         didSet {
             UserDefaults.standard.set(transcriptionLocale.identifier, forKey: "transcriptionLocale")
         }

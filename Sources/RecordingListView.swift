@@ -182,11 +182,6 @@ struct RetranscribeSheet: View {
     @State private var diarizationEnabled: Bool = false
     @State private var selectedLocale: Locale = .current
 
-    private static let supportedLocales: [Locale] = {
-        SFSpeechRecognizer.supportedLocales()
-            .sorted { $0.identifier < $1.identifier }
-    }()
-
     private static func flagEmoji(for locale: Locale) -> String {
         let regionCode: String? = if let region = locale.region?.identifier {
             region
@@ -218,7 +213,7 @@ struct RetranscribeSheet: View {
                 .foregroundStyle(.secondary)
 
             Picker("言語", selection: $selectedLocale) {
-                ForEach(Self.supportedLocales, id: \.identifier) { locale in
+                ForEach(TranscriptionLocale.supported, id: \.identifier) { locale in
                     Text("\(Self.flagEmoji(for: locale)) \(AppLanguage.current.displayLocale.localizedString(forIdentifier: locale.identifier) ?? locale.identifier)")
                         .tag(locale)
                 }
