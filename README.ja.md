@@ -22,6 +22,7 @@ macOS向けのローカル文字起こし & AI議事録アプリ。
 - **ライブ翻訳** — 外国語の発話をリアルタイムで翻訳（すべてオンデバイス）
 - **話者分離** — WhisperKit SpeakerKitにより誰が何を言ったかを識別
 - **カレンダー連携** — ビデオ会議を自動検出し、録音開始をリマインド
+- **CLI & オートメーション** — `fennec` コマンドで全機能を操作でき、録音停止などのイベントでシェルコマンドを実行可能
 - **メニューバー対応** — メニューバーで動作（Dockアイコンの表示/非表示切替可能）
 - **プライバシー最優先** — 音声、文字起こし、翻訳データはすべてMacから外に出ない
 
@@ -33,6 +34,38 @@ macOS向けのローカル文字起こし & AI議事録アプリ。
 brew tap krgpi/tap
 brew install fennec
 ```
+
+## CLI
+
+> [!WARNING]
+> CLIはアルファ版です。コマンドや出力形式は予告なく変更される可能性があります。
+
+アプリには `fennec` コマンドが同梱されています（Homebrew経由ならPATHに追加されます。それ以外は `Fennec.app/Contents/MacOS/fennec`）。起動中のアプリとローカルソケットで通信します。
+
+```bash
+fennec status --launch        # アプリの状態（未起動なら起動）
+fennec record start           # 録音開始
+fennec record stop            # 録音停止
+fennec sessions list          # 録音セッション一覧
+fennec transcribe latest      # 文字起こし（--engine apple|whisper）
+fennec minutes latest --preset work   # プリセットを使って議事録生成
+fennec preset list            # 議事録プリセット管理（list/show/create/delete）
+fennec config list            # 設定の読み書き（list/get/set）
+fennec model list             # Whisperモデル管理（list/download）
+fennec hook list              # オートメーションフック管理（list/add/enable/disable/delete）
+```
+
+セッションIDには `latest` が使えます。一覧・詳細系コマンドは `--json` でJSON出力できます。
+
+## オートメーション
+
+イベント発生時にシェルコマンドを実行できます: `recordingStarted`、`recordingStopped`、`transcriptionCompleted`、`minutesGenerated`。設定 > オートメーション、またはCLIから登録します。
+
+```bash
+fennec hook add recordingStopped 'cp "$FENNEC_SESSION_DIR"/*.m4a ~/Backup/'
+```
+
+フックには環境変数でコンテキストが渡されます — `FENNEC_EVENT`、`FENNEC_SESSION_ID`、`FENNEC_SESSION_DIR`、`FENNEC_TRANSCRIPT_FILE`、`FENNEC_MINUTES_FILE`。実行結果は `~/Library/Logs/Fennec/hooks.log` に記録されます。
 
 ## ソースからビルド
 

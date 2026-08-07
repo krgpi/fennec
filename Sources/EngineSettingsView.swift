@@ -5,13 +5,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 private enum SettingsTab: Int, CaseIterable {
-    case general, recording, transcription
+    case general, recording, transcription, automation
 
     var label: LocalizedStringKey {
         switch self {
         case .general: return "一般"
         case .recording: return "settings.tab.recording"
         case .transcription: return "文字起こし"
+        case .automation: return "オートメーション"
         }
     }
 }
@@ -83,6 +84,8 @@ struct EngineSettingsView: View {
                     recordingTab
                 case .transcription:
                     transcriptionTab
+                case .automation:
+                    AutomationSettingsView()
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)

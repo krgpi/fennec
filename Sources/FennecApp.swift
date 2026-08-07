@@ -43,6 +43,9 @@ struct FennecApp: App {
                 manager.whisperModelManager = whisperManager
                 manager.translationService = translationService
                 applyActivationPolicy()
+                if !CommandLine.arguments.contains("-uitesting") {
+                    CommandServer.start(manager: manager, whisperManager: whisperManager, recordingStore: recordingStore)
+                }
             }
             .onChange(of: hideFromDock) { _, newValue in
                 if newValue { showInMenuBar = true }

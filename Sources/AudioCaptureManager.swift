@@ -216,7 +216,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
     #if DEBUG
     let speakerDiarizer = SpeakerDiarizer()
     #endif
-    private var currentSessionFolder: URL?
+    private(set) var currentSessionFolder: URL?
     private var autoTranscribeTask: Task<Void, Never>?
     private var currentAutoTranscriber: Transcriber?
 
@@ -923,6 +923,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
                 self.transcriptFileURL = nil
                 self.isRecording = true
                 self.errorMessage = nil
+                HookRunner.fire(.recordingStarted, sessionFolder: sessionDir)
                 self.silenceStartDate = nil
                 self.silenceAutoStopTriggered = false
                 self.micNoInputWarning = false
@@ -1047,6 +1048,9 @@ final class AudioCaptureManager: NSObject, ObservableObject {
             }
             saveLiveTranscript()
             saveSessionMetadata()
+            if let folder = currentSessionFolder {
+                HookRunner.fire(.recordingStopped, sessionFolder: folder)
+            }
 
             let liveInsufficient = liveTranscriptionEnabled && sysTranscript.count + micTranscript.count < 10
             let shouldTranscribe = autoTranscribeEnabled || liveInsufficient
@@ -1075,13 +1079,31 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         autoTranscribeProgress = nil
     }
 
-    private func autoTranscribeRecordedFiles() async {
+    @MainActor
+    func startTranscribeSession(folder: URL, systemAudio: URL?, micAudio: URL?, engine: TranscriptionEngineType?) -> Bool {
+        guard !isRecording, autoTranscribeSessionId == nil else { return false }
+        currentSessionFolder = folder
+        systemAudioURL = systemAudio
+        micAudioURL = micAudio
+        sysTranscript = ""
+        micTranscript = ""
+        mergedTranscript = []
+        transcriptFileURL = nil
+        isTranscribing = true
+        autoTranscribeSessionId = folder.lastPathComponent
+        autoTranscribeTask = Task { [weak self] in
+            await self?.autoTranscribeRecordedFiles(engineOverride: engine)
+        }
+        return true
+    }
+
+    private func autoTranscribeRecordedFiles(engineOverride: TranscriptionEngineType? = nil) async {
         let sysURL = await MainActor.run { systemAudioURL }
         let micURL = await MainActor.run { micAudioURL }
         #if DEBUG
         let diarize = await MainActor.run { diarizationEnabled && !liveTranscriptionEnabled }
         #endif
-        let engine = await MainActor.run { autoTranscribeEngine }
+        let engine = await MainActor.run { engineOverride ?? autoTranscribeEngine }
         let modelPath = await MainActor.run { whisperModelManager?.currentModelPath }
 
         var sysSegments: [TimedSegment] = []
@@ -1179,6 +1201,9 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         await MainActor.run {
             if let summary, let folder = currentSessionFolder {
                 updateSummaryInMetadata(folder: folder, summary: summary)
+            }
+            if let folder = currentSessionFolder {
+                HookRunner.fire(.transcriptionCompleted, sessionFolder: folder)
             }
             autoTranscribeSessionId = nil
             autoTranscribePhase = nil

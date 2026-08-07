@@ -26,7 +26,7 @@ struct ContentView: View {
     @State private var cancelFlag = CancellationFlag()
     @State private var deleteTarget: RecordingSession?
     @State private var minutesTarget: RecordingSession?
-    @StateObject private var minutesPresetStore = MinutesPresetStore()
+    @ObservedObject private var minutesPresetStore = MinutesPresetStore.shared
     @State private var isHoveringRecordButton = false
     @State private var selectedDetailTab: DetailTab = .minutes
     @State private var minutesText: String?

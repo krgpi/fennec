@@ -390,6 +390,9 @@
         }
       }
     },
+    "イベント発生時に実行するシェルコマンドを設定します。" : {
+
+    },
     "ウィンドウが表示されていないときはDockアイコンを非表示にします。" : {
       "localizations" : {
         "en" : {
@@ -616,6 +619,9 @@
         }
       }
     },
+    "タイムアウト" : {
+
+    },
     "ダウンロード完了" : {
       "localizations" : {
         "en" : {
@@ -777,6 +783,12 @@
           }
         }
       }
+    },
+    "プリセット「%@」を削除します。現在の設定はそのまま残ります。" : {
+
+    },
+    "プリセットを使わない" : {
+
     },
     "プリセット名" : {
       "extractionState" : "stale",
@@ -1432,6 +1444,7 @@
       }
     },
     "新規作成" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1551,6 +1564,12 @@
         }
       }
     },
+    "現在の設定はプリセット「%@」の内容と異なります。" : {
+
+    },
+    "環境変数: FENNEC_EVENT, FENNEC_SESSION_ID, FENNEC_SESSION_DIR, FENNEC_TRANSCRIPT_FILE, FENNEC_MINUTES_FILE" : {
+
+    },
     "生成" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1593,6 +1612,9 @@
           }
         }
       }
+    },
+    "秒" : {
+
     },
     "約3GB" : {
       "extractionState" : "stale",

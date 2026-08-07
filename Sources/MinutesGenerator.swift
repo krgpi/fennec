@@ -262,6 +262,7 @@ final class MinutesGenerator: ObservableObject {
         do {
             try output.write(to: fileURL, atomically: true, encoding: .utf8)
             self.outputFileURL = fileURL
+            HookRunner.fire(.minutesGenerated, sessionFolder: nil, extra: ["FENNEC_MINUTES_FILE": fileURL.path])
         } catch {
             errorMessage = "ファイルの保存に失敗しました: \(error.localizedDescription)"
         }
@@ -272,45 +273,8 @@ final class MinutesGenerator: ObservableObject {
         process?.terminate()
     }
 
-    private static var cachedShellEnv: [String: String]?
-
-    private static func shellEnvironment() -> [String: String] {
-        if let cached = cachedShellEnv { return cached }
-        var env = ProcessInfo.processInfo.environment
-        let shell = Process()
-        shell.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        shell.arguments = ["-l", "-c", "env"]
-        let pipe = Pipe()
-        shell.standardOutput = pipe
-        shell.standardError = FileHandle.nullDevice
-        if (try? shell.run()) != nil {
-            shell.waitUntilExit()
-            if let data = try? pipe.fileHandleForReading.readToEnd(),
-               let text = String(data: data, encoding: .utf8) {
-                for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
-                    guard let eqIdx = line.firstIndex(of: "=") else { continue }
-                    let key = String(line[line.startIndex..<eqIdx])
-                    let value = String(line[line.index(after: eqIdx)...])
-                    env[key] = value
-                }
-            }
-        }
-        let home = NSHomeDirectory()
-        let pathDirs = [
-            "\(home)/.local/bin",
-            "/opt/homebrew/bin",
-            "/usr/local/bin",
-            "/usr/bin",
-            "/bin",
-        ]
-        if let existing = env["PATH"] {
-            env["PATH"] = pathDirs.joined(separator: ":") + ":" + existing
-        } else {
-            env["PATH"] = pathDirs.joined(separator: ":")
-        }
-        env["HOME"] = home
-        cachedShellEnv = env
-        return env
+    nonisolated static func shellEnvironment() -> [String: String] {
+        ShellEnvironment.current()
     }
 
     private static func loadClaudeMd(in folder: URL) -> String? {
