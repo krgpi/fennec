@@ -1367,6 +1367,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         guard !segments.isEmpty else { return [] }
 
         let pauseThreshold: TimeInterval = 3.0
+        let maxEntryDuration: TimeInterval = 30.0
         let sorted = segments.sorted { $0.start < $1.start }
         var entries: [TranscriptEntry] = []
         var currentSpeaker = sorted[0].speakerId
@@ -1377,7 +1378,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         for i in 1..<sorted.count {
             let seg = sorted[i]
             let pause = seg.start - currentEnd
-            if seg.speakerId == currentSpeaker && pause < pauseThreshold {
+            if seg.speakerId == currentSpeaker && pause < pauseThreshold && seg.end - currentStart < maxEntryDuration {
                 currentTexts.append(seg.text)
                 currentEnd = seg.end
             } else {
@@ -1413,6 +1414,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         }
 
         let pauseThreshold: TimeInterval = 5.0
+        let maxEntryDuration: TimeInterval = 30.0
 
         var all: [Tagged] = []
         for s in system { all.append(Tagged(source: .system, text: s.text, start: s.start, end: s.end)) }
@@ -1430,7 +1432,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
         for i in 1..<all.count {
             let seg = all[i]
             let pauseGap = seg.start - currentEnd
-            if seg.source == currentSource && pauseGap < pauseThreshold {
+            if seg.source == currentSource && pauseGap < pauseThreshold && seg.end - currentStart < maxEntryDuration {
                 currentTexts.append(seg.text)
                 currentEnd = seg.end
             } else {
