@@ -25,7 +25,7 @@ struct MinutesSheet: View {
     @State private var model = "sonnet"
     @State private var presetName = ""
     @State private var saveAsPreset = false
-    @State private var availableBackends: [MinutesBackend] = []
+    @State private var availableBackends: [MinutesBackend]?
     @State private var presetBaseline: PresetSnapshot?
     @State private var showUpdatePresetAlert = false
     @State private var isRenamingPreset = false
@@ -42,6 +42,8 @@ struct MinutesSheet: View {
     var body: some View {
         Group {
             switch phase {
+            case .checking: checkingView
+            case .noBackend: noBackendView
             case .settings: settingsView
             case .running: runningView
             case .finished: finishedView
@@ -78,18 +80,13 @@ struct MinutesSheet: View {
             Text("プリセット「\(selectedPreset?.name ?? "")」を削除します。現在の設定はそのまま残ります。")
         }
         .task {
-            let backends = await Task.detached {
-                MinutesBackend.availableBackends
-            }.value
-            availableBackends = backends
-            if backend.findCLI() == nil, let first = backends.first {
-                backend = first
-                model = first.defaultModel
-            }
+            await detectBackends()
         }
     }
 
     private enum Phase {
+        case checking
+        case noBackend
         case settings
         case running
         case finished
@@ -98,7 +95,57 @@ struct MinutesSheet: View {
     private var phase: Phase {
         if generator.isRunning { return .running }
         if generator.outputFileURL != nil || generator.errorMessage != nil { return .finished }
-        return .settings
+        guard let availableBackends else { return .checking }
+        return availableBackends.isEmpty ? .noBackend : .settings
+    }
+
+    private var checkingView: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("利用できる CLI を確認しています…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    private var noBackendView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 10) {
+                Image(systemName: "terminal")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.secondary)
+                Text("議事録の生成に使える CLI がありません")
+                    .font(.headline)
+                Text("議事録の生成には \(MinutesBackend.allCases.map(\.displayName).joined(separator: " / ")) のいずれかが必要です。")
+                    .settingsCaption()
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+
+            HStack {
+                Spacer()
+                Button("再確認") {
+                    availableBackends = nil
+                    Task { await detectBackends() }
+                }
+                Button("閉じる") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    private func detectBackends() async {
+        let backends = await Task.detached {
+            MinutesBackend.refreshAvailableBackends()
+        }.value
+        availableBackends = backends
+        if !backends.contains(backend), let first = backends.first {
+            backend = first
+            model = first.defaultModel
+        }
     }
 
     private var settingsView: some View {
@@ -180,10 +227,11 @@ struct MinutesSheet: View {
 
             Divider()
 
-            if availableBackends.count > 1 {
+            let backends = availableBackends ?? []
+            if backends.count > 1 {
                 settingsRow("バックエンド:") {
                     Picker("", selection: $backend) {
-                        ForEach(availableBackends, id: \.self) { b in
+                        ForEach(backends, id: \.self) { b in
                             Text(b.displayName).tag(b)
                         }
                     }
@@ -229,7 +277,7 @@ struct MinutesSheet: View {
 
     @ViewBuilder
     private func settingsRow<Content: View>(
-        _ label: String,
+        _ label: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -246,8 +294,14 @@ struct MinutesSheet: View {
 
     private func folderField(url: URL?, action: @escaping () -> Void) -> some View {
         HStack(spacing: 8) {
-            Text(url?.path.replacingOccurrences(of: NSHomeDirectory(), with: "~") ?? "未選択")
-                .foregroundStyle(url == nil ? .secondary : .primary)
+            Group {
+                if let url {
+                    Text(url.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                } else {
+                    Text("未選択")
+                }
+            }
+            .foregroundStyle(url == nil ? .secondary : .primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)

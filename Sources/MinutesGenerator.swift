@@ -78,6 +78,11 @@ enum MinutesBackend: String, Codable, CaseIterable, Hashable {
         allCases.filter { $0.findCLI() != nil }
     }
 
+    static func refreshAvailableBackends() -> [MinutesBackend] {
+        cliPathCache.removeAll()
+        return availableBackends
+    }
+
     private static func findBinary(names: [String]) -> String? {
         let home = NSHomeDirectory()
         let fm = FileManager.default
