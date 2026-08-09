@@ -5,6 +5,7 @@ struct RecordingListView: View {
     @Binding var selectedSession: RecordingSession?
     @Binding var retranscribeTarget: RecordingSession?
     @Binding var deleteTarget: RecordingSession?
+    var onRename: (() -> Void)?
     var transcribingId: String?
     var retranscribePhase: String?
 
@@ -117,7 +118,16 @@ struct RecordingListView: View {
             }
             .font(.subheadline)
 
-            if transcribingId == session.id || manager.autoTranscribeSessionId == session.id {
+            if isLiveRecording(session) {
+                HStack(spacing: 6) {
+                    Image(systemName: "record.circle.fill")
+                        .foregroundStyle(.red)
+                        .symbolEffect(.pulse, options: .repeating)
+                    Text("録音中")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+            } else if transcribingId == session.id || manager.autoTranscribeSessionId == session.id {
                 let isAuto = manager.autoTranscribeSessionId == session.id
                 let phase = isAuto ? manager.autoTranscribePhase : retranscribePhase
 
@@ -133,17 +143,30 @@ struct RecordingListView: View {
         }
         .padding(.vertical, 2)
         .contextMenu {
-            if session.hasTranscript {
-                Button("再文字起こし") { retranscribeTarget = session }
-            } else {
-                Button("文字起こし作成") { retranscribeTarget = session }
+            Button("タイトルを変更") {
+                selectedSession = session
+                onRename?()
+            }
+            Divider()
+            if !isLiveRecording(session) {
+                if session.hasTranscript {
+                    Button("再文字起こし") { retranscribeTarget = session }
+                } else {
+                    Button("文字起こし作成") { retranscribeTarget = session }
+                }
             }
             Button("Finderで開く") {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.folderURL.path)
             }
-            Divider()
-            Button("削除", role: .destructive) { deleteTarget = session }
+            if !isLiveRecording(session) {
+                Divider()
+                Button("削除", role: .destructive) { deleteTarget = session }
+            }
         }
+    }
+
+    private func isLiveRecording(_ session: RecordingSession) -> Bool {
+        manager.isRecording && manager.recordingSessionId == session.id
     }
 
     private static func relativeDate(_ date: Date) -> String {

@@ -46,6 +46,10 @@ struct RecordingSession: Identifiable, Hashable {
         return folderURL.appendingPathComponent(f)
     }
 
+    var noteURL: URL {
+        folderURL.appendingPathComponent("note_\(id).md")
+    }
+
     var displayDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy/MM/dd HH:mm"
@@ -187,6 +191,7 @@ final class RecordingStore: ObservableObject {
             if let url = session.systemAudioURL { try? fm.trashItem(at: url, resultingItemURL: nil) }
             if let url = session.micAudioURL { try? fm.trashItem(at: url, resultingItemURL: nil) }
             if let url = session.transcriptURL { try? fm.trashItem(at: url, resultingItemURL: nil) }
+            try? fm.trashItem(at: session.noteURL, resultingItemURL: nil)
         }
         loadSessions()
     }

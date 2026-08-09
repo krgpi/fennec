@@ -32,8 +32,15 @@ struct ContentView: View {
     @State private var selectedDetailTab: DetailTab = .minutes
     @State private var minutesText: String?
     @State private var showMinutesCopied = false
+    @State private var editingTitle: String = ""
+    @FocusState private var isTitleFocused: Bool
+    @State private var titleSaveTask: Task<Void, Never>?
+    @State private var noteText = ""
+    @State private var savedNoteText = ""
+    @State private var noteSaveTask: Task<Void, Never>?
 
     private enum DetailTab: Hashable {
+        case note
         case transcript
         case minutes
     }
@@ -72,17 +79,52 @@ struct ContentView: View {
                     manager.switchMicrophone(to: deviceID)
                 }
             }
-            .onChange(of: selectedSession) { _, _ in
+            .onChange(of: manager.isRecording) { _, recording in
+                if recording {
+                    recordingStore.loadSessions()
+                    if let id = manager.recordingSessionId,
+                       let session = recordingStore.sessions.first(where: { $0.id == id }) {
+                        selectedSession = session
+                    }
+                } else {
+                    flushNote(for: selectedSession)
+                    recordingStore.loadSessions()
+                    updateSelectedSession()
+                }
+            }
+            .onChange(of: selectedSession) { oldSession, newSession in
+                saveTitleChange(for: oldSession)
+                flushNote(for: oldSession)
+                updateSelectedSession()
+                editingTitle = selectedSession?.summary ?? ""
                 loadTranscript()
+                loadNote()
                 showCopied = false
                 showMinutesCopied = false
-                selectedDetailTab = .minutes
+                if isLiveRecording(newSession) {
+                    selectedDetailTab = .note
+                } else if transcribingId == newSession?.id || manager.autoTranscribeSessionId == newSession?.id {
+                    selectedDetailTab = .transcript
+                } else if minutesText != nil {
+                    selectedDetailTab = .minutes
+                } else if transcriptText != nil {
+                    selectedDetailTab = .transcript
+                } else {
+                    selectedDetailTab = .minutes
+                }
             }
             .onChange(of: manager.autoTranscribeSessionId) { _, newValue in
                 if newValue == nil {
                     recordingStore.loadSessions()
                     updateSelectedSession()
                     loadTranscript()
+                    if selectedDetailTab != .note {
+                        if minutesText != nil {
+                            selectedDetailTab = .minutes
+                        } else if transcriptText != nil {
+                            selectedDetailTab = .transcript
+                        }
+                    }
                 }
             }
     }
@@ -93,12 +135,22 @@ struct ContentView: View {
                 selectedSession: $selectedSession,
                 retranscribeTarget: $retranscribeTarget,
                 deleteTarget: $deleteTarget,
+                onRename: {
+                    Task { @MainActor in
+                        isTitleFocused = true
+                    }
+                },
                 transcribingId: transcribingId,
                 retranscribePhase: retranscribePhase
             )
             .frame(minWidth: 140, idealWidth: 190, maxWidth: 400)
             detailPane
                 .frame(minWidth: 350)
+                .background {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { isTitleFocused = false }
+                }
         }
         .frame(minWidth: 700, minHeight: 500)
         .toolbar { toolbarContent }
@@ -146,6 +198,14 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
             showEngineSettings = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            saveTitleChange(for: selectedSession)
+            flushNote(for: selectedSession)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            saveTitleChange(for: selectedSession)
+            flushNote(for: selectedSession)
         }
         .task {
             if CommandLine.arguments.contains("--snapshot-settings") {
@@ -341,8 +401,15 @@ struct ContentView: View {
     @ViewBuilder
     private func sessionDetailSection(_ session: RecordingSession) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(session.summary ?? session.displayDate)
+            TextField(session.displayDate, text: $editingTitle)
                 .font(.title2.bold())
+                .textFieldStyle(.plain)
+                .focused($isTitleFocused)
+                .onSubmit { isTitleFocused = false }
+                .onChange(of: editingTitle) { _, _ in scheduleTitleSave(for: session) }
+                .onChange(of: isTitleFocused) { _, focused in
+                    if !focused { saveTitleChange(for: session) }
+                }
             HStack(spacing: 8) {
                 Text(session.displayDate)
                     .font(.caption)
@@ -353,40 +420,42 @@ struct ContentView: View {
             }
         }
 
-        HStack(spacing: 6) {
-            playButton(for: session)
+        if !isLiveRecording(session) {
+            HStack(spacing: 6) {
+                playButton(for: session)
 
-            Spacer()
+                Spacer()
 
-            Menu {
-                if session.hasTranscript && session.minutesFile != nil {
-                    Button { minutesTarget = session } label: {
-                        Label("議事録を再生成", systemImage: "doc.text")
+                Menu {
+                    if session.hasTranscript && session.minutesFile != nil {
+                        Button { minutesTarget = session } label: {
+                            Label("議事録を再生成", systemImage: "doc.text")
+                        }
                     }
-                }
 
-                Button { retranscribeTarget = session } label: {
-                    Label(session.hasTranscript ? "再文字起こし" : "文字起こし作成", systemImage: "arrow.clockwise")
-                }
+                    Button { retranscribeTarget = session } label: {
+                        Label(session.hasTranscript ? "再文字起こし" : "文字起こし作成", systemImage: "arrow.clockwise")
+                    }
 
-                Button {
-                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.folderURL.path)
+                    Button {
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.folderURL.path)
+                    } label: {
+                        Label("フォルダを開く", systemImage: "folder")
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) { deleteTarget = session } label: {
+                        Label("削除", systemImage: "trash")
+                    }
                 } label: {
-                    Label("フォルダを開く", systemImage: "folder")
+                    Image(systemName: "ellipsis.circle")
                 }
-
-                Divider()
-
-                Button(role: .destructive) { deleteTarget = session } label: {
-                    Label("削除", systemImage: "trash")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .buttonStyle(.accessoryBar)
         }
-        .buttonStyle(.accessoryBar)
 
         Divider()
 
@@ -399,18 +468,22 @@ struct ContentView: View {
         HStack {
             Spacer()
             Picker("", selection: $selectedDetailTab) {
+                Text("メモ").tag(DetailTab.note)
                 Text("議事録").tag(DetailTab.minutes)
                 Text("文字起こし").tag(DetailTab.transcript)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(maxWidth: 300)
+            .frame(maxWidth: 360)
             Spacer()
         }
 
-        if selectedDetailTab == .minutes {
+        switch selectedDetailTab {
+        case .note:
+            noteContent(for: session)
+        case .minutes:
             minutesContent(for: session)
-        } else {
+        case .transcript:
             transcriptContent(for: session)
         }
     }
@@ -666,6 +739,33 @@ struct ContentView: View {
               let updated = recordingStore.sessions.first(where: { $0.id == selected.id })
         else { return }
         selectedSession = updated
+        if !isTitleFocused {
+            editingTitle = updated.summary ?? ""
+        }
+    }
+
+    private func scheduleTitleSave(for session: RecordingSession) {
+        titleSaveTask?.cancel()
+        titleSaveTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            saveTitleChange(for: session)
+        }
+    }
+
+    private func saveTitleChange(for session: RecordingSession?) {
+        titleSaveTask?.cancel()
+        titleSaveTask = nil
+        guard var session, session.folderURL != RecordingStore.baseDirectory else { return }
+        let newTitle = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveTitle = newTitle.isEmpty ? nil : newTitle
+        guard session.summary != effectiveTitle else { return }
+        session.summary = effectiveTitle
+        recordingStore.saveMetadata(for: session)
+        recordingStore.loadSessions()
+        if selectedSession?.id == session.id {
+            selectedSession = recordingStore.sessions.first(where: { $0.id == session.id })
+        }
     }
 
     private func copyTranscript() {
@@ -705,6 +805,80 @@ struct ContentView: View {
                 .textSelection(.enabled)
         }
         .padding(.vertical, 6)
+    }
+
+    // MARK: - Note
+
+    @ViewBuilder
+    private func noteContent(for session: RecordingSession) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextEditor(text: $noteText)
+                .font(.body)
+                .lineSpacing(4)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .frame(minHeight: 260)
+                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(.quaternary)
+                }
+                .overlay(alignment: .topLeading) {
+                    if noteText.isEmpty {
+                        Text("会議中のメモを Markdown で入力できます")
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 12)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .onChange(of: noteText) { _, _ in scheduleNoteSave(for: session) }
+
+            HStack {
+                Spacer()
+                Text(noteText == savedNoteText ? "保存済み" : "自動保存されます")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: 700, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func loadNote() {
+        let text = selectedSession.flatMap { try? String(contentsOf: $0.noteURL, encoding: .utf8) } ?? ""
+        noteText = text
+        savedNoteText = text
+    }
+
+    private func scheduleNoteSave(for session: RecordingSession) {
+        noteSaveTask?.cancel()
+        noteSaveTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            writeNote(for: session)
+        }
+    }
+
+    private func flushNote(for session: RecordingSession?) {
+        noteSaveTask?.cancel()
+        noteSaveTask = nil
+        writeNote(for: session)
+    }
+
+    private func writeNote(for session: RecordingSession?) {
+        guard let session, noteText != savedNoteText else { return }
+        if noteText.isEmpty {
+            try? FileManager.default.removeItem(at: session.noteURL)
+        } else {
+            try? noteText.write(to: session.noteURL, atomically: true, encoding: .utf8)
+        }
+        savedNoteText = noteText
+    }
+
+    private func isLiveRecording(_ session: RecordingSession?) -> Bool {
+        guard let session else { return false }
+        return manager.isRecording && manager.recordingSessionId == session.id
     }
 
     @ViewBuilder
@@ -748,16 +922,46 @@ struct ContentView: View {
             }
             .frame(maxWidth: 700, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
+        } else if isLiveRecording(session) {
+            VStack(spacing: 12) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.quaternary)
+                Text("録音中です。停止後に文字起こしが作成されます")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 40)
         } else if !session.hasTranscript && transcribingId != session.id && manager.autoTranscribeSessionId != session.id {
-            Text("文字起こしデータがありません")
-                .foregroundStyle(.secondary)
-                .italic()
+            VStack(spacing: 12) {
+                Image(systemName: "text.word.spacing")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.quaternary)
+                Text("文字起こしデータがありません")
+                    .foregroundStyle(.secondary)
+                Button { retranscribeTarget = session } label: {
+                    Label("文字起こしを作成", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 40)
         }
     }
 
     @ViewBuilder
     private func minutesContent(for session: RecordingSession) -> some View {
-        if let text = minutesText, !text.isEmpty {
+        if isLiveRecording(session) {
+            VStack(spacing: 12) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.quaternary)
+                Text("録音を停止して文字起こしを作成すると議事録を生成できます")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 40)
+        } else if let text = minutesText, !text.isEmpty {
             HStack {
                 Spacer()
                 Button {
@@ -987,6 +1191,7 @@ struct ContentView: View {
         if selectedSession?.id == session.id {
             updateSelectedSession()
             loadTranscript()
+            selectedDetailTab = .transcript
         }
 
         transcribingId = nil

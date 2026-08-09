@@ -1096,6 +1096,16 @@
         }
       }
     },
+    "メモ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
+          }
+        }
+      }
+    },
     "モデル" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1320,12 +1330,33 @@
         }
       }
     },
+    "会議中のメモを Markdown で入力できます" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write your meeting notes here in Markdown"
+          }
+        }
+      }
+    },
     "保存先" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save Location"
+          }
+        }
+      }
+    },
+    "保存済み" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved"
           }
         }
       }
@@ -1937,6 +1968,17 @@
         }
       }
     },
+    "自動保存されます" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves automatically"
+          }
+        }
+      }
+    },
     "表示言語の変更はアプリの再起動後に反映されます。" : {
       "localizations" : {
         "en" : {
@@ -2129,6 +2171,7 @@
       }
     },
     "議事録を保存しました" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2287,6 +2330,16 @@
         }
       }
     },
+    "録音を停止して文字起こしを作成すると議事録を生成できます" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop recording and create a transcript to generate minutes."
+          }
+        }
+      }
+    },
     "録音を自動停止しました" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2320,7 +2373,6 @@
       }
     },
     "録音中" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2336,6 +2388,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recording — %@"
+          }
+        }
+      }
+    },
+    "録音中です。停止後に文字起こしが作成されます" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording. The transcript will be created after you stop."
           }
         }
       }

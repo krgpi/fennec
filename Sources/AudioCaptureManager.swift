@@ -74,6 +74,7 @@ private extension Character {
 
 final class AudioCaptureManager: NSObject, ObservableObject {
     @Published var isRecording = false
+    @Published private(set) var recordingSessionId: String?
     @Published var systemAudioURL: URL?
     @Published var micAudioURL: URL?
     @Published var errorMessage: String?
@@ -931,6 +932,8 @@ final class AudioCaptureManager: NSObject, ObservableObject {
                 self.micNoInputAlertShown = false
                 self.micInputTicks = 0
                 self.recordingStart = Date()
+                self.recordingSessionId = ts
+                self.saveSessionMetadata()
                 self.timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
                     guard let self, let start = self.recordingStart else { return }
                     self.duration = Date().timeIntervalSince(start)
