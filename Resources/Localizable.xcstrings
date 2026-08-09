@@ -436,6 +436,16 @@
         }
       }
     },
+    "オンの間は録音後の自動文字起こしを行いません。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "While this is on, transcription is not run automatically after recording."
+          }
+        }
+      }
+    },
     "カレンダーの会議予定に合わせて録音開始を提案します。" : {
       "localizations" : {
         "en" : {
@@ -499,6 +509,17 @@
         }
       }
     },
+    "この設定をプリセットとして保存" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save these settings as a preset"
+          }
+        }
+      }
+    },
     "この録音を削除しますか？" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -532,6 +553,17 @@
         }
       }
     },
+    "コンテキスト:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Context:"
+          }
+        }
+      }
+    },
     "コンテキストフォルダ" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -539,6 +571,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Context Folder"
+          }
+        }
+      }
+    },
+    "コンテキストフォルダと同じ" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same as context folder"
           }
         }
       }
@@ -729,6 +772,17 @@
         }
       }
     },
+    "バックエンド:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backend:"
+          }
+        }
+      }
+    },
     "ファイルの保存に失敗しました" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -739,9 +793,6 @@
           }
         }
       }
-    },
-    "フォルダが未設定の場合、コンテキストなしで生成し録音フォルダに保存します" : {
-
     },
     "フォルダにアクセスできません" : {
       "extractionState" : "stale",
@@ -787,11 +838,80 @@
         }
       }
     },
+    "プリセット:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preset:"
+          }
+        }
+      }
+    },
     "プリセット「%@」を削除します。現在の設定はそのまま残ります。" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This deletes the preset “%@”. Your current settings are kept."
+          }
+        }
+      }
     },
     "プリセットを使わない" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No preset"
+          }
+        }
+      }
+    },
+    "プリセットを削除" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Preset"
+          }
+        }
+      }
+    },
+    "プリセットを削除しますか？" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this preset?"
+          }
+        }
+      }
+    },
+    "プリセットを更新しますか？" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the preset?"
+          }
+        }
+      }
+    },
+    "プリセット保存:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Preset:"
+          }
+        }
+      }
     },
     "プリセット名" : {
       "extractionState" : "stale",
@@ -800,6 +920,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preset Name"
+          }
+        }
+      }
+    },
+    "プリセット名を変更" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename Preset"
           }
         }
       }
@@ -976,6 +1107,17 @@
         }
       }
     },
+    "モデル:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model:"
+          }
+        }
+      }
+    },
     "モデルをダウンロード中… %@" : {
       "localizations" : {
         "en" : {
@@ -993,6 +1135,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Used for live transcription"
+          }
+        }
+      }
+    },
+    "リアルタイム文字起こしがオンのため選択できません。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable because live transcription is on."
           }
         }
       }
@@ -1210,6 +1362,17 @@
         }
       }
     },
+    "再確認" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Again"
+          }
+        }
+      }
+    },
     "最高精度" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1227,6 +1390,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Processing..."
+          }
+        }
+      }
+    },
+    "出力先:" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output:"
           }
         }
       }
@@ -1264,6 +1438,16 @@
         }
       }
     },
+    "利用できる CLI を確認しています…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for available CLIs…"
+          }
+        }
+      }
+    },
     "削除" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1293,6 +1477,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Switch to Voice Isolation"
+          }
+        }
+      }
+    },
+    "変更" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
           }
         }
       }
@@ -1336,6 +1531,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "完了までしばらくかかります" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This may take a while"
           }
         }
       }
@@ -1468,8 +1673,39 @@
         }
       }
     },
-    "未選択" : {
+    "更新して生成" : {
       "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update and Generate"
+          }
+        }
+      }
+    },
+    "更新せずに生成" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate Without Updating"
+          }
+        }
+      }
+    },
+    "未設定の場合、コンテキストなしで生成し録音フォルダに保存します。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If not set, minutes are generated without context and saved to the recording folder."
+          }
+        }
+      }
+    },
+    "未選択" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1568,7 +1804,14 @@
       }
     },
     "現在の設定はプリセット「%@」の内容と異なります。" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current settings differ from the preset “%@”."
+          }
+        }
+      }
     },
     "環境変数: FENNEC_EVENT, FENNEC_SESSION_ID, FENNEC_SESSION_DIR, FENNEC_TRANSCRIPT_FILE, FENNEC_MINUTES_FILE" : {
 
@@ -1585,7 +1828,6 @@
       }
     },
     "生成に失敗しました" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1596,6 +1838,7 @@
       }
     },
     "生成中..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1736,6 +1979,17 @@
         }
       }
     },
+    "設定に戻る" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Settings"
+          }
+        }
+      }
+    },
     "設定を開く" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1833,6 +2087,26 @@
         }
       }
     },
+    "議事録の生成には %@ のいずれかが必要です。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generating minutes requires one of %@."
+          }
+        }
+      }
+    },
+    "議事録の生成に使える CLI がありません" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No CLI available for generating minutes"
+          }
+        }
+      }
+    },
     "議事録をコピー" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1871,6 +2145,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Regenerate Minutes"
+          }
+        }
+      }
+    },
+    "議事録を生成しています…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generating minutes…"
+          }
+        }
+      }
+    },
+    "議事録生成の参考にするドキュメントのフォルダを選びます。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a folder of documents to use as reference when generating minutes."
           }
         }
       }
