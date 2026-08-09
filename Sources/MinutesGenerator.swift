@@ -281,9 +281,10 @@ final class MinutesGenerator: ObservableObject {
             HookRunner.fire(.minutesGenerated, sessionFolder: nil, extra: ["FENNEC_MINUTES_FILE": fileURL.path])
         } catch {
             errorMessage = "ファイルの保存に失敗しました: \(error.localizedDescription)"
+            isRunning = false
+            return
         }
-        isRunning = false
-        generatingSessionId = nil
+        // isRunning / generatingSessionId は呼び出し側がメタデータ保存後にクリアする
     }
 
     func cancel() {

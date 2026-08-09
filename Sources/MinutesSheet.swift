@@ -431,6 +431,8 @@ struct MinutesSheet: View {
                 updated.minutesPresetId = savedPresetId
                 recordingStore.saveMetadata(for: updated)
                 recordingStore.loadSessions()
+                generator.isRunning = false
+                generator.generatingSessionId = nil
             }
         }
         dismiss()
