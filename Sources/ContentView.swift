@@ -95,7 +95,7 @@ struct ContentView: View {
                 transcribingId: transcribingId,
                 retranscribePhase: retranscribePhase
             )
-            .frame(minWidth: 140, idealWidth: 150, maxWidth: 400)
+            .frame(minWidth: 140, idealWidth: 190, maxWidth: 400)
             detailPane
                 .frame(minWidth: 350)
         }
