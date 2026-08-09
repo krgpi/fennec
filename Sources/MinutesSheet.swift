@@ -12,9 +12,9 @@ private extension View {
 struct MinutesSheet: View {
     let session: RecordingSession
     let transcript: String
+    @ObservedObject var generator: MinutesGenerator
     @ObservedObject var presetStore: MinutesPresetStore
     @ObservedObject var recordingStore: RecordingStore
-    @StateObject private var generator = MinutesGenerator()
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedPresetId: String = ""
@@ -45,8 +45,6 @@ struct MinutesSheet: View {
             case .checking: checkingView
             case .noBackend: noBackendView
             case .settings: settingsView
-            case .running: runningView
-            case .finished: finishedView
             }
         }
         .padding(20)
@@ -88,13 +86,9 @@ struct MinutesSheet: View {
         case checking
         case noBackend
         case settings
-        case running
-        case finished
     }
 
     private var phase: Phase {
-        if generator.isRunning { return .running }
-        if generator.outputFileURL != nil || generator.errorMessage != nil { return .finished }
         guard let availableBackends else { return .checking }
         return availableBackends.isEmpty ? .noBackend : .settings
     }
@@ -309,67 +303,6 @@ struct MinutesSheet: View {
         }
     }
 
-    private var runningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .controlSize(.large)
-            Text("議事録を生成しています…")
-                .font(.headline)
-            Text("完了までしばらくかかります")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button("キャンセル") { generator.cancel() }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-    }
-
-    @ViewBuilder
-    private var finishedView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let url = generator.outputFileURL {
-                VStack(spacing: 12) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.green)
-                    Text("議事録を保存しました")
-                        .font(.headline)
-                    Text(url.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                    Button("Finder で開く") {
-                        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-            } else if let error = generator.errorMessage {
-                Text("生成に失敗しました")
-                    .font(.headline)
-                ScrollView {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
-                .frame(maxHeight: 200)
-            }
-
-            HStack {
-                Spacer()
-                if generator.outputFileURL == nil {
-                    Button("設定に戻る") { generator.errorMessage = nil }
-                }
-                Button("閉じる") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-    }
-
     private var selectedPreset: MinutesPreset? {
         presetStore.presets.first { $0.id.uuidString == selectedPresetId }
     }
@@ -476,6 +409,8 @@ struct MinutesSheet: View {
             }
         }
 
+        let session = self.session
+        let recordingStore = self.recordingStore
         Task {
             await generator.generate(
                 transcript: transcript,
@@ -498,5 +433,6 @@ struct MinutesSheet: View {
                 recordingStore.loadSessions()
             }
         }
+        dismiss()
     }
 }

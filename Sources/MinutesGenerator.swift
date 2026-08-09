@@ -141,6 +141,7 @@ final class MinutesGenerator: ObservableObject {
     @Published var output = ""
     @Published var errorMessage: String?
     @Published var outputFileURL: URL?
+    @Published var generatingSessionId: String?
 
     private var process: Process?
     private var wasCancelled = false
@@ -165,6 +166,7 @@ final class MinutesGenerator: ObservableObject {
         output = ""
         errorMessage = nil
         outputFileURL = nil
+        generatingSessionId = sessionDate
 
         let claudeMd = contextFolder.flatMap { Self.loadClaudeMd(in: $0) }
         let existingNames = configuredOutputFolder.map { Self.listExistingFileNames(in: $0) } ?? []
@@ -281,6 +283,7 @@ final class MinutesGenerator: ObservableObject {
             errorMessage = "ファイルの保存に失敗しました: \(error.localizedDescription)"
         }
         isRunning = false
+        generatingSessionId = nil
     }
 
     func cancel() {

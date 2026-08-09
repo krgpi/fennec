@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var cancelFlag = CancellationFlag()
     @State private var deleteTarget: RecordingSession?
     @State private var minutesTarget: RecordingSession?
+    @StateObject private var minutesGenerator = MinutesGenerator()
     @ObservedObject private var minutesPresetStore = MinutesPresetStore.shared
     @State private var isHoveringRecordButton = false
     @State private var selectedDetailTab: DetailTab = .minutes
@@ -132,7 +133,15 @@ struct ContentView: View {
         }) { session in
             if let url = session.transcriptURL,
                let text = try? String(contentsOf: url, encoding: .utf8) {
-                MinutesSheet(session: session, transcript: text, presetStore: minutesPresetStore, recordingStore: recordingStore)
+                MinutesSheet(session: session, transcript: text, generator: minutesGenerator, presetStore: minutesPresetStore, recordingStore: recordingStore)
+            }
+        }
+        .onChange(of: minutesGenerator.isRunning) { _, running in
+            if !running, minutesGenerator.outputFileURL != nil {
+                recordingStore.loadSessions()
+                updateSelectedSession()
+                loadMinutes()
+                selectedDetailTab = .minutes
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
@@ -772,6 +781,34 @@ struct ContentView: View {
             }
             .frame(maxWidth: 700, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
+        } else if minutesGenerator.isRunning && minutesGenerator.generatingSessionId == session.id {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("議事録を生成しています…")
+                    .font(.headline)
+                Text("完了までしばらくかかります")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("キャンセル") { minutesGenerator.cancel() }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 40)
+        } else if let error = minutesGenerator.errorMessage, minutesGenerator.generatingSessionId == session.id {
+            VStack(spacing: 12) {
+                Text("生成に失敗しました")
+                    .font(.headline)
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                Button { minutesTarget = session } label: {
+                    Label("再試行", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 40)
         } else if session.hasTranscript {
             VStack(spacing: 12) {
                 Image(systemName: "doc.text")

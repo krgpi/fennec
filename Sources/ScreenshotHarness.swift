@@ -3,6 +3,17 @@ import AppKit
 import SwiftUI
 
 enum ScreenshotHarness {
+    private struct MinutesScreenshot: View {
+        @StateObject private var generator = MinutesGenerator()
+        let session: RecordingSession
+        let transcript: String
+        let presetStore: MinutesPresetStore
+        let recordingStore: RecordingStore
+        var body: some View {
+            MinutesSheet(session: session, transcript: transcript, generator: generator, presetStore: presetStore, recordingStore: recordingStore)
+        }
+    }
+
     enum Screen: String {
         case minutes
 
@@ -10,7 +21,7 @@ enum ScreenshotHarness {
         var view: some View {
             switch self {
             case .minutes:
-                MinutesSheet(
+                MinutesScreenshot(
                     session: Self.sampleSession,
                     transcript: Self.sampleTranscript,
                     presetStore: Self.samplePresetStore,
