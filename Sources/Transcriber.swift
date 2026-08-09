@@ -62,13 +62,13 @@ final class Transcriber {
         }
 
         var finalizedText = ""
-        var rawTexts: [String] = []
+        var rawResults: [(text: String, range: CMTimeRange)] = []
 
         do {
             for try await result in transcriber.results {
                 let text = String(result.text.characters)
                 if result.isFinal {
-                    rawTexts.append(text)
+                    rawResults.append((text, result.range))
                     finalizedText += text
                     DispatchQueue.main.async { onUpdate(finalizedText) }
                 } else {
@@ -82,18 +82,31 @@ final class Transcriber {
         await feedTask.value
         self.analyzer = nil
 
-        var segments: [TimedSegment] = []
-        let totalChars = rawTexts.reduce(0) { $0 + $1.count }
-        var charOffset = 0
-        for text in rawTexts {
-            let start = totalChars > 0 ? audioDuration * Double(charOffset) / Double(totalChars) : 0
-            let endCharOffset = charOffset + text.count
-            let end = totalChars > 0 ? audioDuration * Double(endCharOffset) / Double(totalChars) : start + 1.0
-            segments.append(TimedSegment(text: text, start: start, end: end))
-            charOffset = endCharOffset
+        let segments = Self.buildSegments(from: rawResults, audioDuration: audioDuration)
+        return Result(text: finalizedText, segments: segments, error: nil)
+    }
+
+    private static func buildSegments(from results: [(text: String, range: CMTimeRange)], audioDuration: Double) -> [TimedSegment] {
+        let hasRealTimings = results.contains { $0.range.duration.isNumeric && $0.range.duration.seconds > 0 }
+        if hasRealTimings {
+            return results.map { result in
+                let start = result.range.start.isNumeric ? result.range.start.seconds : 0
+                let end = result.range.duration.isNumeric ? start + result.range.duration.seconds : start
+                return TimedSegment(text: result.text, start: start, end: max(end, start))
+            }
         }
 
-        return Result(text: finalizedText, segments: segments, error: nil)
+        var segments: [TimedSegment] = []
+        let totalChars = results.reduce(0) { $0 + $1.text.count }
+        var charOffset = 0
+        for result in results {
+            let start = totalChars > 0 ? audioDuration * Double(charOffset) / Double(totalChars) : 0
+            let endCharOffset = charOffset + result.text.count
+            let end = totalChars > 0 ? audioDuration * Double(endCharOffset) / Double(totalChars) : start + 1.0
+            segments.append(TimedSegment(text: result.text, start: start, end: end))
+            charOffset = endCharOffset
+        }
+        return segments
     }
 
     private func feedAudioFile(url: URL, targetFormat: AVAudioFormat, builder: AsyncStream<AnalyzerInput>.Continuation, audioDuration: Double, onProgress: ((Double) -> Void)?) async {
@@ -190,20 +203,26 @@ final class Transcriber {
                     if result.isFinal {
                         resumed = true
                         DispatchQueue.main.async { onProgress?(1.0) }
-                        let segments = Self.groupSegments(lastSegments)
+                        let segments = Self.groupSegments(lastSegments, audioDuration: audioDuration)
                         cont.resume(returning: Result(text: lastText, segments: segments, error: nil))
                     }
                 } else if let error {
                     resumed = true
-                    let segments = Self.groupSegments(lastSegments)
+                    let segments = Self.groupSegments(lastSegments, audioDuration: audioDuration)
                     cont.resume(returning: Result(text: lastText, segments: segments, error: "\(url.lastPathComponent): \(error.localizedDescription)"))
                 }
             }
         }
     }
 
-    private static func groupSegments(_ sfSegments: [SFTranscriptionSegment]) -> [TimedSegment] {
+    private static func groupSegments(_ sfSegments: [SFTranscriptionSegment], audioDuration: Double) -> [TimedSegment] {
         guard !sfSegments.isEmpty else { return [] }
+
+        // SFSpeechURLRecognitionRequest はセグメントの timestamp を全て 0 で返すことがある
+        if !sfSegments.contains(where: { $0.timestamp > 0 || $0.duration > 0 }) {
+            let sentences = AudioCaptureManager.splitIntoSentences(joinSegmentTexts(sfSegments.map(\.substring)))
+            return buildSegments(from: sentences.map { (text: $0, range: CMTimeRange.invalid) }, audioDuration: audioDuration)
+        }
 
         var result: [TimedSegment] = []
         var currentTexts = [sfSegments[0].substring]
