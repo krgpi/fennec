@@ -1053,7 +1053,7 @@ final class AudioCaptureManager: NSObject, ObservableObject {
             }
 
             let liveInsufficient = liveTranscriptionEnabled && sysTranscript.count + micTranscript.count < 10
-            let shouldTranscribe = autoTranscribeEnabled || liveInsufficient
+            let shouldTranscribe = liveTranscriptionEnabled ? liveInsufficient : autoTranscribeEnabled
             if shouldTranscribe {
                 isTranscribing = true
                 autoTranscribeSessionId = currentSessionFolder?.lastPathComponent

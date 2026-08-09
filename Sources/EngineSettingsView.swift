@@ -353,6 +353,10 @@ struct EngineSettingsView: View {
         }
     }
 
+    private var autoTranscribeEffective: Bool {
+        !captureManager.liveTranscriptionEnabled && captureManager.autoTranscribeEnabled
+    }
+
     private var transcriptionTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -379,6 +383,11 @@ struct EngineSettingsView: View {
                             Text("Apple音声認識で録音中にリアルタイム文字起こしを表示します。Whisperモデルはリアルタイム文字起こしには使用できません。")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
+                            if captureManager.liveTranscriptionEnabled {
+                                Text("オンの間は録音後の自動文字起こしを行いません。")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .padding(4)
@@ -411,13 +420,25 @@ struct EngineSettingsView: View {
                 GroupBox {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Toggle("録音後に自動で文字起こし", isOn: $captureManager.autoTranscribeEnabled)
+                            Toggle("録音後に自動で文字起こし", isOn: Binding(
+                                get: { autoTranscribeEffective },
+                                set: { captureManager.autoTranscribeEnabled = $0 }
+                            ))
+                            .disabled(captureManager.liveTranscriptionEnabled)
                             Text("録音終了後に自動的に文字起こしを実行します。")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
+                            if captureManager.liveTranscriptionEnabled {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "info.circle")
+                                    Text("リアルタイム文字起こしがオンのため選択できません。")
+                                }
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            }
                         }
 
-                        if captureManager.autoTranscribeEnabled {
+                        if autoTranscribeEffective {
                             Divider()
                             VStack(alignment: .leading, spacing: 4) {
                                 Picker("エンジン", selection: $captureManager.autoTranscribeEngine) {
