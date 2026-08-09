@@ -25,6 +25,12 @@ struct FennecApp: App {
     @AppStorage("showInMenuBar") private var showInMenuBar = false
     @AppStorage("hideFromDock") private var hideFromDock = false
 
+    init() {
+        #if DEBUG
+        _ = ScreenshotHarness.runIfNeeded()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
