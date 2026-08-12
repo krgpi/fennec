@@ -1,0 +1,48 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# macOSはSwiftヘルパー(SpeechAnalyzer)がmacOS 26 SDKを要求するためCIランナーでビルドできない。
+# ローカルで `scripts/release.sh <tag>` を実行してdmg/zipをこのdraft releaseに追加してから公開する。
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # glibc互換のためLinuxは最古のサポート対象ランナーで固定する
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            libasound2-dev libpipewire-0.3-dev clang cmake bzip2 \
+            build-essential curl wget file libxdo-dev libssl-dev
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Fennec __VERSION__
+          releaseDraft: true
+          prerelease: false

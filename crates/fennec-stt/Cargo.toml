@@ -1,0 +1,21 @@
+[package]
+name = "fennec-stt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fennec-core = { path = "../fennec-core" }
+fennec-audio = { path = "../fennec-audio" }
+anyhow.workspace = true
+serde_json.workspace = true
+base64 = "0.22"
+whisper-rs = "0.14"
+ureq = "2"
+tar = "0.4"
+bzip2 = "0.4"
+# static は onnxruntime 同梱を不要にする代わり、Linux x86_64 で .cargo/config.toml の relocation-model=dynamic-no-pic を要求する
+sherpa-rs = { version = "0.6.8", default-features = false, features = ["download-binaries", "static"] }
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,25 +1,9 @@
-# Xcode
-xcuserdata/
-*.xcodeproj/
-DerivedData/
-build/
-
-# macOS
+target/
+node_modules/
+dist/
+dist-release/
+packaging/aur/PKGBUILD
+src-tauri/binaries/
+sidecar/FennecHelper/.build/
+*.log
 .DS_Store
-
-# Swift
-.build/
-.swiftpm/
-Package.resolved
-
-# Build artifacts
-*.ipa
-*.app.dSYM.zip
-*.pkg
-*.app
-*.xcarchive
-AppIcon.iconset/
-
-# Local
-.claude/
-Local.xcconfig

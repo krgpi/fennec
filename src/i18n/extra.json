@@ -1,0 +1,70 @@
+{
+  "録音停止": { "en": "Stop Recording" },
+  "音声が検出されていません。システム設定でマイクとシステム音声の権限を確認してください。": {
+    "en": "No audio detected. Check microphone and system audio permissions in System Settings."
+  },
+  "マイク入力が検出されていません。権限とデバイスを確認してください。": {
+    "en": "No microphone input detected. Check permissions and the selected device."
+  },
+  "システム音声が検出されていません。権限を確認してください。": {
+    "en": "No system audio detected. Check permissions."
+  },
+  "Whisperモデルが必要です": { "en": "Whisper model required" },
+  "ダウンロード中...": { "en": "Downloading..." },
+  "ダウンロード": { "en": "Download" },
+  "議事録を再生成": { "en": "Regenerate Minutes" },
+  "議事録を生成中...": { "en": "Generating minutes..." },
+  "議事録はまだ作成されていません": { "en": "No minutes have been created yet." },
+  "議事録を入力...": { "en": "Write the minutes..." },
+  "表示": { "en": "View" },
+  "編集": { "en": "Edit" },
+  "まだ書き出していません": { "en": "Not exported yet" },
+  "議事録は録音データと同じフォルダにのみ保存されています。": {
+    "en": "The minutes are only stored in the same folder as the recording."
+  },
+  "編集内容はまだ書き出されていません": { "en": "Edits have not been exported" },
+  "書き出し先のファイルは {{date}} に書き出した内容のままです": {
+    "en": "The exported file still holds the version written on {{date}}"
+  },
+  "書き出し済み · {{date}}": { "en": "Exported · {{date}}" },
+  "書き出す...": { "en": "Export..." },
+  "書き出して更新...": { "en": "Export to update..." },
+  "生成した議事録をここに書き出します。以降アプリ内で編集した内容は、議事録タブから書き出すまで反映されません。": {
+    "en": "Generated minutes are exported here. Later edits made in the app are not reflected until you export again from the Minutes tab."
+  },
+  "プリセットなし": { "en": "No preset" },
+  "バックエンド": { "en": "Backend" },
+  "モデル": { "en": "Model" },
+  "コンテキスト": { "en": "Context" },
+  "出力先": { "en": "Output" },
+  "プリセットとして保存": { "en": "Save as preset" },
+  "プリセット名": { "en": "Preset name" },
+  "未設定": { "en": "Not set" },
+  "選択...": { "en": "Choose..." },
+  "作成": { "en": "Create" },
+  "Claude Code / Codex / Gemini CLI が見つかりません。いずれかをインストールしてください。": {
+    "en": "Claude Code / Codex / Gemini CLI not found. Please install one of them."
+  },
+  "一時停止": { "en": "Pause" },
+  "再生": { "en": "Play" },
+  "メモを入力...": { "en": "Write a note..." },
+  "録音中にリアルタイムで文字起こしを表示します（Whisperモデルのダウンロードが必要です）。": {
+    "en": "Show live transcription while recording (requires a downloaded Whisper model)."
+  },
+  "エンジン": { "en": "Engine" },
+  "オートメーション": { "en": "Automation" },
+  "システムデフォルト": { "en": "System default" },
+  "録音開始時": { "en": "When recording starts" },
+  "録音停止時": { "en": "When recording stops" },
+  "文字起こし完了時": { "en": "When transcription completes" },
+  "議事録生成時": { "en": "When minutes are generated" },
+  "話者識別": { "en": "Speaker Identification" },
+  "録音後の文字起こしで話者を識別してラベル付けします（別途モデルのダウンロードが必要、約45MB）。": {
+    "en": "Identify and label speakers in post-recording transcription (requires an additional ~45MB model download)."
+  },
+  "モデル導入済み": { "en": "Model installed" },
+  "モデルをダウンロード": { "en": "Download model" },
+  "ICS購読URL": { "en": "ICS subscription URLs" },
+  "1行に1つのURLを入力します。": { "en": "Enter one URL per line." },
+  "録音中...": { "en": "Recording..." }
+}

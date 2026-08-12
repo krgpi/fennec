@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+:root {
+  font-family: "Hiragino Sans", "Yu Gothic UI", system-ui, -apple-system, sans-serif;
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.markdown {
+  --md-border: rgb(212 212 212);
+  --md-subtle: rgb(245 245 245);
+  --md-muted: rgb(115 115 115);
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown {
+    --md-border: rgb(64 64 64);
+    --md-subtle: rgb(38 38 38);
+    --md-muted: rgb(163 163 163);
+  }
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.6em 0 0.6em;
+}
+
+.markdown h1 {
+  font-size: 1.5em;
+}
+.markdown h2 {
+  font-size: 1.25em;
+  border-bottom: 1px solid var(--md-border);
+  padding-bottom: 0.25em;
+}
+.markdown h3 {
+  font-size: 1.1em;
+}
+
+.markdown p {
+  margin: 0.75em 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.markdown ul {
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown li {
+  margin: 0.25em 0;
+}
+.markdown li::marker {
+  color: var(--md-muted);
+}
+
+.markdown li > input[type="checkbox"] {
+  margin-right: 0.4em;
+}
+
+.markdown blockquote {
+  margin: 0.75em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid var(--md-border);
+  color: var(--md-muted);
+}
+
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--md-subtle);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+.markdown pre {
+  margin: 0.75em 0;
+  padding: 0.75em 1em;
+  background: var(--md-subtle);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown a {
+  color: rgb(59 130 246);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.markdown table {
+  margin: 0.75em 0;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--md-border);
+  padding: 0.35em 0.7em;
+  text-align: left;
+}
+
+.markdown th {
+  background: var(--md-subtle);
+  font-weight: 600;
+}
+
+.markdown hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--md-border);
+}
+
+.markdown img {
+  max-width: 100%;
+}

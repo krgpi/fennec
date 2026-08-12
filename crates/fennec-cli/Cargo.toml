@@ -1,0 +1,16 @@
+[package]
+name = "fennec-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "fennec"
+path = "src/main.rs"
+
+[dependencies]
+fennec-core = { path = "../fennec-core" }
+clap = { version = "4", features = ["derive"] }
+interprocess = "2"
+serde_json.workspace = true
+anyhow.workspace = true

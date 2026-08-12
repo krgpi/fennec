@@ -1,0 +1,38 @@
+name: publish-packages
+
+# release を publish したタイミングで winget / AUR に流す。
+# 必要なシークレット: WINGET_TOKEN (classic PAT, public_repo), AUR_USERNAME, AUR_EMAIL, AUR_SSH_PRIVATE_KEY
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  winget:
+    runs-on: ubuntu-latest
+    steps:
+      # 新規パッケージには対応していないため、初回だけ wingetcreate new で手動PRを出す必要がある
+      - uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: krgpi.Fennec
+          installers-regex: '\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+  aur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render PKGBUILD
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed "s/__VERSION__/${VERSION}/g" packaging/aur/PKGBUILD.in > packaging/aur/PKGBUILD
+      - uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
+        with:
+          pkgname: fennec-bin
+          pkgbuild: packaging/aur/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: fennec-bin ${{ github.ref_name }}
+          updpkgsums: true
+          ssh_keyscan_types: rsa,ecdsa,ed25519

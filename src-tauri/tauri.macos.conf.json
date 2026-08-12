@@ -1,0 +1,9 @@
+{
+  "build": {
+    "beforeDevCommand": "bash scripts/build-helper.sh && node scripts/build-cli.mjs && pnpm dev",
+    "beforeBuildCommand": "bash scripts/build-helper.sh && node scripts/build-cli.mjs && pnpm build"
+  },
+  "bundle": {
+    "externalBin": ["binaries/fennec-helper", "binaries/fennec"]
+  }
+}

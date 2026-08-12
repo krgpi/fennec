@@ -1,0 +1,27 @@
+[package]
+name = "fennec-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fennec-core = { path = "../fennec-core" }
+anyhow.workspace = true
+cpal = "0.16"
+hound = "3.5"
+audiopus = "0.2"
+ogg = "0.9"
+symphonia = { version = "0.5", default-features = false, features = ["isomp4", "aac"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# at/av/cm compensate for missing feature gates in cidre 0.19.0 (core_audio alone does not compile)
+cidre = { version = "0.19", default-features = false, features = ["core_audio", "at", "av", "cm", "macos_14_4"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+wasapi = "0.23"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+pipewire = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
