@@ -37,4 +37,15 @@ ls -la "$OUT"
 if [ -n "$TAG" ]; then
     gh release upload "$TAG" "$OUT"/* --clobber
     echo "uploaded to release $TAG"
+
+    if [ "$(uname -s)" = "Darwin" ]; then
+        ZIP_NAME="Fennec_${VERSION}_$(uname -m).zip"
+        SHA256=$(shasum -a 256 "$OUT/$ZIP_NAME" | awk '{print $1}')
+        gh api repos/krgpi/homebrew-tap/dispatches \
+          -f event_type=update-cask \
+          -f "client_payload[cask]=fennec" \
+          -f "client_payload[version]=${VERSION}" \
+          -f "client_payload[sha256]=${SHA256}"
+        echo "dispatched Homebrew tap update"
+    fi
 fi
