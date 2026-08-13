@@ -8,6 +8,15 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 pub type ProgressCallback = Arc<dyn Fn(f64) + Send + Sync>;
 
+/// whisper-rs の `use_gpu` 既定値は `cfg!(feature = "_gpu")` なので、cargo feature ではなく
+/// build.rs 側で GPU バックエンドを有効にした場合は false のままになる。明示的に立てる。
+/// バックエンドが無いビルドでは ggml が CPU にフォールバックするので常に true でよい。
+pub(crate) fn context_params() -> WhisperContextParameters<'static> {
+    let mut params = WhisperContextParameters::default();
+    params.use_gpu(true);
+    params
+}
+
 pub struct WhisperBatchTranscriber {
     loaded: Option<(PathBuf, WhisperContext)>,
 }
@@ -130,7 +139,7 @@ impl WhisperBatchTranscriber {
                 model_path
                     .to_str()
                     .context("model path is not valid utf-8")?,
-                WhisperContextParameters::default(),
+                context_params(),
             )
             .with_context(|| format!("failed to load whisper model {}", model_path.display()))?;
             self.loaded = Some((model_path.to_path_buf(), ctx));

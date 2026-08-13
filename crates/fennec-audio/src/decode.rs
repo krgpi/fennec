@@ -190,18 +190,45 @@ impl StreamDownmixResampler {
     }
 }
 
-pub fn is_silent_audio(path: &Path, threshold: f32) -> anyhow::Result<bool> {
-    let (samples, _, channels) = read_audio(path)?;
+pub fn is_silent_audio(path: &Path, floor: f32) -> anyhow::Result<bool> {
+    let (samples, rate, channels) = read_audio(path)?;
     if samples.is_empty() {
         return Ok(true);
     }
-    let ch = channels.max(1) as usize;
-    let mut max_rms = 0.0f32;
-    for c in 0..ch {
-        let channel: Vec<f32> = samples.iter().skip(c).step_by(ch).copied().collect();
-        max_rms = max_rms.max(crate::level::rms(&channel));
+    let mono = mixdown_mono(&samples, channels);
+    Ok(!has_speech_energy(&mono, rate, floor))
+}
+
+/// 全体RMSではなくフレーム単位のエネルギー分布で音声の有無を判定する。
+/// 未接続のマイクでも定常ノイズ（ヒス・ファン音）で全体RMSは floor を超えるため、
+/// 全体RMSだけだと無音を検出できずWhisperが幻覚を延々生成することになる。
+/// ノイズフロアを下位パーセンタイルで推定し、そこから突出したフレームが
+/// 一定時間以上あるときだけ音声ありとみなす。
+pub fn has_speech_energy(mono: &[f32], sample_rate: u32, floor: f32) -> bool {
+    const FRAME_MS: u32 = 30;
+    const NOISE_FLOOR_PERCENTILE: f32 = 0.2;
+    const SNR_RATIO: f32 = 3.0;
+    const MIN_SPEECH_MS: u32 = 500;
+    // 明らかに大きい音が含まれるなら、判定を誤って本物の音声を捨てないよう常に音声ありとする
+    const LOUD_ABS: f32 = 0.02;
+
+    let frame_len = (sample_rate.max(1) as usize * FRAME_MS as usize / 1000).max(1);
+    let frames: Vec<f32> = mono.chunks(frame_len).map(crate::level::rms).collect();
+    if frames.is_empty() {
+        return false;
     }
-    Ok(max_rms < threshold)
+
+    let peak = frames.iter().copied().fold(0.0f32, f32::max);
+    if peak >= LOUD_ABS {
+        return true;
+    }
+
+    let mut sorted = frames.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let idx = ((sorted.len() as f32 * NOISE_FLOOR_PERCENTILE) as usize).min(sorted.len() - 1);
+    let threshold = floor.max(sorted[idx] * SNR_RATIO);
+    let needed = (MIN_SPEECH_MS / FRAME_MS).max(1) as usize;
+    frames.iter().filter(|rms| **rms > threshold).count() >= needed
 }
 
 #[cfg(test)]
@@ -212,6 +239,41 @@ mod tests {
     fn mixdown_averages_channels() {
         let stereo = [1.0f32, 0.0, 0.5, 0.5];
         assert_eq!(mixdown_mono(&stereo, 2), vec![0.5, 0.5]);
+    }
+
+    fn noise(len: usize, amplitude: f32) -> Vec<f32> {
+        (0..len)
+            .map(|i| if i % 2 == 0 { amplitude } else { -amplitude })
+            .collect()
+    }
+
+    #[test]
+    fn digital_silence_has_no_speech() {
+        assert!(!has_speech_energy(&vec![0.0; 16000 * 5], 16000, 0.001));
+        assert!(!has_speech_energy(&[], 16000, 0.001));
+    }
+
+    #[test]
+    fn steady_mic_noise_has_no_speech() {
+        // 未接続マイクのノイズフロア相当。全体RMSは floor(0.001) を超えるが音声ではない
+        let samples = noise(16000 * 5, 0.005);
+        assert!(crate::level::rms(&samples) > 0.001);
+        assert!(!has_speech_energy(&samples, 16000, 0.001));
+    }
+
+    #[test]
+    fn speech_bursts_over_noise_are_detected() {
+        let mut samples = noise(16000 * 5, 0.005);
+        for (i, s) in samples.iter_mut().enumerate().take(16000).skip(16000 / 2) {
+            *s = if i % 2 == 0 { 0.15 } else { -0.15 };
+        }
+        assert!(has_speech_energy(&samples, 16000, 0.001));
+    }
+
+    #[test]
+    fn continuous_loud_audio_is_never_treated_as_silence() {
+        let samples = noise(16000 * 5, 0.2);
+        assert!(has_speech_energy(&samples, 16000, 0.001));
     }
 
     #[test]

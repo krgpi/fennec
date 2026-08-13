@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+#[derive(Clone)]
 pub struct HookFire {
     pub hooks: Vec<AutomationHook>,
     pub timeout_seconds: u32,

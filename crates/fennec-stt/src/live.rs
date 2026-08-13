@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext};
 
 const SAMPLE_RATE: usize = 16000;
 const BLOCK: usize = SAMPLE_RATE / 10;
@@ -33,7 +33,7 @@ impl LiveEngine {
             model_path
                 .to_str()
                 .context("model path is not valid utf-8")?,
-            WhisperContextParameters::default(),
+            crate::batch::context_params(),
         )
         .with_context(|| format!("failed to load whisper model {}", model_path.display()))?;
         Ok(Arc::new(Self {

@@ -1,4 +1,4 @@
-use crate::events::{self, RecordingStatePayload};
+use crate::events::{self, RecordingStatePayload, TranscribeDone};
 use crate::recording::controller::{
     LiveConfig, RecordingController, SilenceAutoStop,
 };
@@ -125,11 +125,60 @@ pub fn perform_stop(app: &AppHandle) -> Result<String, String> {
         .unwrap()
         .take()
         .ok_or_else(|| "not recording".to_string())?;
-    let outcome = controller.stop(app).map_err(|e| format!("{e:#}"))?;
+
+    let session_id = controller.session_id.clone();
+    let duration = controller.duration();
+
+    events::emit(
+        app,
+        events::RECORDING_STATE,
+        RecordingStatePayload {
+            recording: false,
+            duration,
+            session_id: Some(session_id.clone()),
+        },
+    );
     crate::tray::refresh(app);
-    events::emit(app, events::SESSIONS_CHANGED, ());
+
+    let (auto_transcribe, label_lang, model_id, locale) = {
+        let settings = state.settings.read().unwrap();
+        (
+            settings.auto_transcribe_enabled,
+            label_language(&settings.app_language),
+            settings.whisper_model_id.clone(),
+            settings.transcription_locale.clone(),
+        )
+    };
+    let hook_config = state.hook_config(app);
+
+    let bg_app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        finish_stop(bg_app, controller, hook_config, auto_transcribe, label_lang, model_id, locale);
+    });
+
+    Ok(session_id)
+}
+
+fn finish_stop(
+    app: AppHandle,
+    controller: RecordingController,
+    hook_config: crate::services::hooks::HookFire,
+    auto_transcribe: bool,
+    label_lang: fennec_core::format::LabelLanguage,
+    model_id: String,
+    locale: Option<String>,
+) {
+    let outcome = match controller.stop(&app) {
+        Ok(o) => o,
+        Err(e) => {
+            log::error!("failed to stop recording: {e:#}");
+            events::emit(&app, events::SESSIONS_CHANGED, ());
+            return;
+        }
+    };
+    events::emit(&app, events::SESSIONS_CHANGED, ());
     crate::services::hooks::fire(
-        state.hook_config(app),
+        hook_config.clone(),
         fennec_core::hooks::HookEvent::RecordingStopped,
         Some(&outcome.folder),
         Default::default(),
@@ -141,16 +190,6 @@ pub fn perform_stop(app: &AppHandle) -> Result<String, String> {
         .chain(outcome.live_mic_segments.iter())
         .map(|s| s.text.chars().count())
         .sum();
-
-    let (auto_transcribe, label_lang, model_id, locale) = {
-        let settings = state.settings.read().unwrap();
-        (
-            settings.auto_transcribe_enabled,
-            label_language(&settings.app_language),
-            settings.whisper_model_id.clone(),
-            settings.transcription_locale.clone(),
-        )
-    };
 
     let mut transcription_started = false;
     if outcome.live_engine.is_some() && live_chars >= 10 {
@@ -167,26 +206,24 @@ pub fn perform_stop(app: &AppHandle) -> Result<String, String> {
         ) {
             Ok(()) => {
                 crate::services::hooks::fire(
-                    state.hook_config(app),
+                    hook_config,
                     fennec_core::hooks::HookEvent::TranscriptionCompleted,
                     Some(&outcome.folder),
                     Default::default(),
                 );
-                let bg_app = app.clone();
                 let bg_folder = outcome.folder.clone();
                 let bg_session = outcome.session_id.clone();
-                tauri::async_runtime::spawn_blocking(move || {
-                    crate::transcription::job::generate_summary_if_missing(&bg_app, &bg_folder);
-                    crate::services::translation::translate_transcript(
-                        &bg_app, &bg_folder, &bg_session,
-                    );
-                });
-                events::emit(app, events::SESSIONS_CHANGED, ());
+                crate::transcription::job::generate_summary_if_missing(&app, &bg_folder);
+                emit_transcribe_done(&app, &bg_session);
+                crate::services::translation::translate_transcript(
+                    &app, &bg_folder, &bg_session,
+                );
+                emit_transcribe_done(&app, &bg_session);
+                events::emit(&app, events::SESSIONS_CHANGED, ());
             }
             Err(e) => log::error!("failed to save live transcript: {e:#}"),
         }
     } else {
-        // ライブ有効時は結果がほぼ空のときだけバッチにフォールバック（既存挙動）
         let should_batch = if outcome.live_engine.is_some() {
             true
         } else {
@@ -206,7 +243,17 @@ pub fn perform_stop(app: &AppHandle) -> Result<String, String> {
     if !transcription_started {
         crate::recording::encode::spawn_encode(app.clone(), outcome.folder.clone());
     }
-    Ok(outcome.session_id)
+}
+
+fn emit_transcribe_done(app: &AppHandle, session_id: &str) {
+    events::emit(
+        app,
+        events::TRANSCRIBE_DONE,
+        TranscribeDone {
+            session_id: session_id.to_string(),
+            error: None,
+        },
+    );
 }
 
 #[tauri::command]
