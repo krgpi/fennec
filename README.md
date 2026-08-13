@@ -73,7 +73,36 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 - AUR — `fennec-bin` を一度手で `git push` して作成（PKGBUILDのテンプレートは `packaging/aur/PKGBUILD.in`）
 - Homebrew — cask を tap に登録
 
-未対応: Windowsのコード署名（無署名のためSmartScreen警告が出る）、macOSの署名/notarization、Linux aarch64（`.cargo/config.toml` のrelocation-model指定はx86_64のみ）。
+未対応: Windowsのコード署名（無署名のためSmartScreen警告が出る）、macOSの署名/notarization、Linux aarch64。
+
+## Install (Linux)
+
+### AppImage（推奨・全ディストロ対応）
+
+```bash
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_2.0.0_amd64.AppImage
+chmod +x Fennec_2.0.0_amd64.AppImage
+./Fennec_2.0.0_amd64.AppImage
+```
+
+依存ライブラリ（sherpa-onnx、GTK等）を同梱しているため追加インストール不要。FUSE 2が必要（`sudo apt install libfuse2` / 多くのディストロにはプリインストール済み）。
+
+### Debian / Ubuntu (.deb)
+
+```bash
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_2.0.0_amd64.deb
+sudo dpkg -i Fennec_2.0.0_amd64.deb
+sudo apt-get install -f  # 不足する依存パッケージがあれば解決
+```
+
+### AUR (Arch Linux)
+
+```bash
+# yay / paru 等の AUR ヘルパーを使用
+yay -S fennec-bin
+```
+
+> **注意**: Linux版は x86_64 のみ。PipeWire が必要（システム音声のキャプチャに使用）。
 
 ## 既知の落とし穴（開発メモ）
 
@@ -81,4 +110,4 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 - trash 5.x はmacOSデフォルトがFinder経由(osascript)でオートメーション権限プロンプトによりハングする。`DeleteMethod::NsFileManager` を使う
 - cidre 0.19 は `core_audio` featureだけではコンパイルできず `at`/`av`/`cm` が必要
 - Swiftヘルパーの `batchTranscribe` はAVAudioFile読み（wav/m4a）。ogg/opusは呼び出し側で一時wavに変換して渡す
-- sherpa-rs は全OS `static` でビルドする（onnxruntimeを埋め込み、dll/soの同梱とrpath調整を避けるため）。Linux x86_64 では `RUSTFLAGS="-C relocation-model=dynamic-no-pic"` が必須で、無いと sherpa-rs-sys の build.rs が panic する（`.cargo/config.toml` で指定済み）。非PIEバイナリになるので deb の lintian 警告は出る
+- sherpa-rs はmacOSでは `static` でビルド（onnxruntimeを埋め込み、dll同梱を不要にする）。Linux/Windowsでは動的リンク（`libsherpa-onnx-c-api.so` / `.dll` をインストーラに同梱する必要がある）。AppImageはlinuxdeployが自動でバンドルするが、`.deb` はビルド後にsoファイルを手動で追加してリパッケージする
