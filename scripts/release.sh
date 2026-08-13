@@ -6,6 +6,12 @@ VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
 OUT="dist-release"
 TAG="${1:-}"
 
+# 配布物はCUDA Toolkitの無い環境でも動く必要がある。ビルドマシンにCUDAが入っていると
+# build.rsが自動検出してcudart/cublasを動的リンクし、一般ユーザーの環境で起動できなくなる
+if [ "$(uname -s)" != "Darwin" ] && [ "$(uname -s)" != "Linux" ]; then
+    export FENNEC_NO_CUDA=1
+fi
+
 pnpm install --frozen-lockfile
 pnpm tauri build
 
