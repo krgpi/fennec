@@ -106,7 +106,35 @@ fn main() {
 
     if !whisper_root.exists() {
         std::fs::create_dir_all(&whisper_root).unwrap();
-        fs_extra::dir::copy("./whisper.cpp", &out, &Default::default()).unwrap_or_else(|e| {
+        let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let local_src = manifest_dir.join("whisper.cpp");
+        let src = if local_src.exists() {
+            local_src
+        } else {
+            // Patched crate: find whisper.cpp in the original registry source
+            let registry_src = manifest_dir
+                .parent().unwrap() // patches/
+                .parent().unwrap() // workspace root
+                .join("target/release/build");
+            // Fall back to downloading via the original crate's bundled source
+            // by looking in the cargo registry cache
+            let home = PathBuf::from(env::var("CARGO_HOME").unwrap_or_else(|_| {
+                let h = env::var("HOME").or_else(|_| env::var("USERPROFILE")).unwrap();
+                format!("{}/.cargo", h)
+            }));
+            let mut found = None;
+            if let Ok(entries) = std::fs::read_dir(home.join("registry/src")) {
+                for entry in entries.flatten() {
+                    let candidate = entry.path().join("whisper-rs-sys-0.13.1/whisper.cpp");
+                    if candidate.exists() {
+                        found = Some(candidate);
+                        break;
+                    }
+                }
+            }
+            found.expect("Could not find whisper.cpp sources in cargo registry")
+        };
+        fs_extra::dir::copy(&src, &out, &Default::default()).unwrap_or_else(|e| {
             panic!(
                 "Failed to copy whisper sources into {}: {}",
                 whisper_root.display(),
