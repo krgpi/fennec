@@ -1,10 +1,11 @@
 name: publish-packages
 
-# release を publish したタイミングで winget / AUR に流す。
+# winget / AUR にリリースを流す。
+# winget の krgpi.Fennec と AUR の fennec-bin は初版を手動で登録するまでこのワークフローは必ず失敗するため、
+# 登録とシークレット設定が済むまでは手動実行のみにしてある。済んだら `release: types: [published]` を足す。
 # 必要なシークレット: WINGET_TOKEN (classic PAT, public_repo), AUR_USERNAME, AUR_EMAIL, AUR_SSH_PRIVATE_KEY
+# 手動実行するときはバージョンを github.ref_name から取るので、必ず vX.Y.Z タグを選んで実行する。
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 jobs:

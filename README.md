@@ -58,12 +58,11 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 
 手順:
 
-1. `src-tauri/tauri.conf.json` の `version` を上げて `vX.Y.Z` タグを push
-   → `.github/workflows/release.yml` が Windows / Linux をビルドして **draft** release を作る
-2. macOS 26+ のローカルで `scripts/release.sh vX.Y.Z`
-   → `.dmg` / `.zip` を同じ draft release にアップロードする（Swiftヘルパーが macOS 26 SDK 必須でCIランナーでは作れない）
+1. `src-tauri/tauri.conf.json` / `package.json` / ルート `Cargo.toml` の `version` を上げて `vX.Y.Z` タグを push し、draft release を作る
+2. macOS / Windows / Linux それぞれのローカルマシンで `scripts/release.sh vX.Y.Z`
+   → 各OSの成果物を同じ draft release にアップロードする（CIではビルドしない。macOSはSwiftヘルパーが macOS 26 SDK 必須でランナーでは作れず、Windows / Linux もローカルビルドに揃えている）
 3. draft を publish
-   → `.github/workflows/publish-packages.yml` が winget と AUR を更新する
+4. `vX.Y.Z` タグを選んで `.github/workflows/publish-packages.yml` を手動実行し、winget と AUR を更新する
 
 必要なシークレット: `WINGET_TOKEN`（classic PAT / `public_repo` スコープ）、`AUR_USERNAME` / `AUR_EMAIL` / `AUR_SSH_PRIVATE_KEY`。
 
