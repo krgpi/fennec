@@ -1,42 +1,91 @@
-# Fennec (Tauri)
+<p align="right">
+  <strong>English</strong> | <a href="README.ja.md">日本語</a>
+</p>
 
-会議の録音・文字起こし・議事録生成アプリのクロスプラットフォーム実装（macOS / Windows / Linux）。
-既存のmacOS版（`../code`）と同じセッションフォルダ形式・CLIコマンド体系・IPCプロトコルを持つ。
+<img src="icon_1024.png" width="128" height="128" alt="Fennec" align="left">
 
-## Build
+# Fennec
 
-要件: Rust (stable) / Node.js 22+ / pnpm。macOSはXcode Command Line Tools（Swiftヘルパー用）、Linuxは `libpipewire-0.3-dev` `libasound2-dev` ほかTauri標準の依存。
+Local transcription & AI meeting notes for macOS, Windows, and Linux.
+
+Captures system audio and microphone input simultaneously, with real-time and post-recording speech-to-text. Feed the transcript to your coding agent (Claude Code, Codex, Gemini CLI) to generate minutes with the context of past meetings. All audio processing runs on-device — recordings and transcripts never leave your machine.
+
+<br clear="left">
+
+## Philosophy
+
+- **On-device first** — Recording, transcription, diarization, and translation all run locally. Only minutes generation calls out, and only to the agent CLI you already trust.
+- **Files, not a database** — One folder per session (`<base>/yyyyMMdd_HHmmss/`) holding the audio, transcripts, and `minutes.md`. Everything is readable and greppable without the app.
+- **Works with any call app** — Captures system audio at the OS level, so Zoom, Meet, Teams, Discord, LINE, and FaceTime all just work.
+- **Scriptable** — The `fennec` CLI and hooks let you drive recording and wire it into your own automation.
+
+## Features
+
+- **Dual-stream capture** — System audio (their voice) + microphone (your voice), recorded together
+- **Real-time transcription** — Live transcription with whisper.cpp (all platforms) or Apple Speech Recognition (macOS 26+)
+- **High-accuracy transcription** — Post-recording transcription with Whisper Small / Large V3 (Turbo) models
+- **AI meeting minutes** — Generate minutes via Claude Code / Codex / Gemini CLI, with context from previous meetings
+- **Live translation** — On-device translation of foreign-language speech (macOS)
+- **Speaker diarization** — Identify who said what (sherpa-onnx)
+- **Calendar integration** — Detect video meetings and remind you to start recording
+- **Tray / menu bar** — Runs in the background with a tray icon
+- **CLI** — Control the app from your terminal or scripts
+
+## Install
+
+### macOS — Homebrew
 
 ```bash
-pnpm install
-pnpm tauri dev                        # 開発起動（TCCの動作確認は下記の.appで）
-pnpm tauri build --debug --bundles app  # デバッグ.app（macOSの権限検証はこちらを使う）
-pnpm tauri build                      # リリースビルド
+brew tap krgpi/tap
+brew install --cask fennec
 ```
 
-> **macOSの注意**: `pnpm tauri dev` は非バンドルバイナリのため、TCC（マイク・システム音声収録）がダイアログを出さずにサイレント拒否し録音が無音になる。録音を試すときは必ず `--bundles app` で作った `target/debug/bundle/macos/Fennec.app` を起動すること。
+### Windows — winget
 
-## 構成
-
-```
-crates/
-  fennec-core    純ロジック（セグメントマージ・幻覚フィルタ・session.json・IPC型・設定）。ユニットテストはここに集中
-  fennec-audio   キャプチャ（mac: Core Audio process tap / win: WASAPI loopback / linux: PipeWire、マイクはcpal）、WAV/Opus/m4aデコード、再生エンジン
-  fennec-stt     whisper.cpp（バッチ+ライブVAD）、sherpa-onnx話者分離、モデルDL、macOSヘルパークライアント
-  fennec-cli     `fennec` CLI（アプリとIPCで通信、既存Swift版CLI互換）
-src-tauri/       アプリ本体（録音コントローラ、文字起こしジョブ、議事録生成、フック、IPCサーバー、トレイ）
-src/             React + TypeScript + Tailwind + zustand
-sidecar/FennecHelper/  Swiftヘルパー（SpeechAnalyzer・FoundationModels・Apple Translation。macOSのみ、sidecarとして同梱）
+```powershell
+winget install krgpi.Fennec
 ```
 
-- 文字起こしエンジン: whisper.cpp（全OS）+ Apple音声認識（macOSのみ、ライブ/バッチとも選択可）
-- 録音は WAV で書き、文字起こし後に Opus (.ogg) へ変換。既存 .m4a セッションも読める
-- 議事録はセッションフォルダの `minutes.md` が正本。プリセットの出力先などへは明示的な「書き出し」で別ファイルとして書き出す。`session.json` には書き出し日時・パス・内容ハッシュだけを残し、書き出し先ファイルのリネームや移動は追跡しない（ハッシュ不一致＝未書き出しの編集ありとしてUIに表示する）
-- i18n: `scripts/convert-xcstrings.mjs` が既存 `Localizable.xcstrings` から `src/i18n/{ja,en}.json` を生成
+### Linux
 
-## CLI
+```bash
+# AppImage (works on any distro; bundles its dependencies, needs FUSE 2)
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.AppImage
+chmod +x Fennec_0.0.1_amd64.AppImage && ./Fennec_0.0.1_amd64.AppImage
 
-アプリバンドルに `fennec` が同梱される（`Fennec.app/Contents/MacOS/fennec`）。
+# Debian / Ubuntu
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.deb
+sudo dpkg -i Fennec_0.0.1_amd64.deb && sudo apt-get install -f
+
+# Arch Linux
+yay -S fennec-bin
+```
+
+x86_64 only. PipeWire is required for system audio capture.
+
+`.deb` / `.rpm` / `.exe` / `.dmg` are also attached to each [GitHub Release](https://github.com/krgpi/fennec/releases).
+
+## Usage
+
+1. Launch Fennec and grant microphone and system-audio recording permission.
+2. Download a Whisper model from Settings (Small is a good default; Large V3 Turbo for accuracy).
+3. Press **Record**. Live transcription appears as you speak; recording continues in the background from the tray.
+4. Stop recording — the full transcript is generated automatically and saved next to the audio.
+5. Open **Minutes**, pick a preset and backend (Claude Code / Codex / Gemini CLI), and generate. Edit in-app, then **Export** to write the minutes anywhere you like.
+
+Each session is a folder under your recordings directory:
+
+```
+20260813_140000/
+  system_<id>.ogg / mic_<id>.ogg   audio
+  transcript_<id>.txt       [MM:SS] Speaker: text
+  minutes.md                the canonical minutes
+  session.json              metadata
+```
+
+### CLI
+
+`fennec` ships inside the app bundle (macOS: `Fennec.app/Contents/MacOS/fennec`).
 
 ```bash
 fennec status --launch
@@ -46,67 +95,45 @@ fennec transcribe latest --engine apple
 fennec minutes latest --backend claude
 ```
 
-## リリース・配布
+## Development
 
-GitHub Releases が配布物の正本で、そこから各パッケージマネージャに流す。
-
-| OS | チャネル |
-|---|---|
-| macOS | Homebrew cask（`.dmg` / `.zip`） |
-| Windows | winget（`krgpi.Fennec`）+ NSIS `.exe` 直配布 |
-| Linux | AUR（`fennec-bin`）+ `.deb` / `.rpm` / `.AppImage` 直配布 |
-
-手順:
-
-1. `src-tauri/tauri.conf.json` / `package.json` / ルート `Cargo.toml` の `version` を上げて `vX.Y.Z` タグを push し、draft release を作る
-2. macOS / Windows / Linux それぞれのローカルマシンで `scripts/release.sh vX.Y.Z`
-   → 各OSの成果物を同じ draft release にアップロードする（CIではビルドしない。macOSはSwiftヘルパーが macOS 26 SDK 必須でランナーでは作れず、Windows / Linux もローカルビルドに揃えている）
-3. draft を publish
-4. `vX.Y.Z` タグを選んで `.github/workflows/publish-packages.yml` を手動実行し、winget と AUR を更新する
-
-必要なシークレット: `WINGET_TOKEN`（classic PAT / `public_repo` スコープ）、`AUR_USERNAME` / `AUR_EMAIL` / `AUR_SSH_PRIVATE_KEY`。
-
-初回だけ手動が必要:
-
-- winget — `wingetcreate new` で `krgpi.Fennec` の初版マニフェストをPR（winget-releaser は既存パッケージの更新専用）
-- AUR — `fennec-bin` を一度手で `git push` して作成（PKGBUILDのテンプレートは `packaging/aur/PKGBUILD.in`）
-- Homebrew — cask を tap に登録
-
-未対応: Windowsのコード署名（無署名のためSmartScreen警告が出る）、macOSの署名/notarization、Linux aarch64。
-
-## Install (Linux)
-
-### AppImage（推奨・全ディストロ対応）
+Requirements: Rust (stable), Node.js 22+, pnpm. macOS also needs Xcode Command Line Tools (for the Swift helper); Linux needs `libpipewire-0.3-dev`, `libasound2-dev`, and the standard Tauri dependencies.
 
 ```bash
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.AppImage
-chmod +x Fennec_0.0.1_amd64.AppImage
-./Fennec_0.0.1_amd64.AppImage
+pnpm install
+pnpm tauri dev                          # dev server
+pnpm tauri build --debug --bundles app  # debug .app (use this to verify permissions on macOS)
+pnpm tauri build                        # release build
+cargo test -p fennec-core               # unit tests
 ```
 
-依存ライブラリ（sherpa-onnx、GTK等）を同梱しているため追加インストール不要。FUSE 2が必要（`sudo apt install libfuse2` / 多くのディストロにはプリインストール済み）。
+> **macOS note**: `pnpm tauri dev` runs an unbundled binary, so TCC silently denies microphone / system audio capture without showing a prompt and recordings come out silent. Always test recording with the bundled `.app`.
 
-### Debian / Ubuntu (.deb)
+### Layout
 
-```bash
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.deb
-sudo dpkg -i Fennec_0.0.1_amd64.deb
-sudo apt-get install -f  # 不足する依存パッケージがあれば解決
+```
+crates/fennec-core   Pure logic (segment merging, hallucination filter, session.json, IPC types, settings). Tests live here
+crates/fennec-audio  Capture (mac: Core Audio process tap / win: WASAPI loopback / linux: PipeWire; mic via cpal), decoding, playback
+crates/fennec-stt    whisper.cpp (batch + live VAD), sherpa-onnx diarization, model downloads, Swift helper client
+crates/fennec-cli    `fennec` CLI, talks to the app over IPC
+src-tauri/           App core: recording, transcription jobs, minutes, hooks, IPC server, tray
+src/                 React + TypeScript + Tailwind + zustand
+sidecar/FennecHelper Swift helper (SpeechAnalyzer / FoundationModels / Translation; macOS only)
 ```
 
-### AUR (Arch Linux)
+Platform differences are absorbed inside the crates — `src-tauri` stays free of `cfg`. Recording is written as WAV and converted to Opus (`.ogg`) after transcription. UI strings are keyed in Japanese; run `scripts/convert-xcstrings.mjs` to regenerate `src/i18n/{ja,en}.json`.
 
-```bash
-# yay / paru 等の AUR ヘルパーを使用
-yay -S fennec-bin
-```
+### Release
 
-> **注意**: Linux版は x86_64 のみ。PipeWire が必要（システム音声のキャプチャに使用）。
+GitHub Releases is the source of truth; package managers pull from it.
 
-## 既知の落とし穴（開発メモ）
+1. Bump `version` in `src-tauri/tauri.conf.json`, `package.json`, and the root `Cargo.toml`, push a `vX.Y.Z` tag, and create a draft release.
+2. Run `scripts/release.sh vX.Y.Z` on a macOS, Windows, and Linux machine, uploading each build to the same draft. (Builds are local — the Swift helper needs the macOS 26 SDK, which CI runners don't have.)
+3. Publish the draft.
+4. Run `.github/workflows/publish-packages.yml` manually against the tag to update winget and AUR.
 
-- whisper-rs 0.14 の `set_abort_callback_safe` は `Box<dyn FnMut() -> bool>` 以外のクロージャ型を渡すとUB（ランダムabort / error -6）。必ず明示的にboxして渡す
-- trash 5.x はmacOSデフォルトがFinder経由(osascript)でオートメーション権限プロンプトによりハングする。`DeleteMethod::NsFileManager` を使う
-- cidre 0.19 は `core_audio` featureだけではコンパイルできず `at`/`av`/`cm` が必要
-- Swiftヘルパーの `batchTranscribe` はAVAudioFile読み（wav/m4a）。ogg/opusは呼び出し側で一時wavに変換して渡す
-- sherpa-rs はmacOSでは `static` でビルド（onnxruntimeを埋め込み、dll同梱を不要にする）。Linux/Windowsでは動的リンク（`libsherpa-onnx-c-api.so` / `.dll` をインストーラに同梱する必要がある）。AppImageはlinuxdeployが自動でバンドルするが、`.deb` はビルド後にsoファイルを手動で追加してリパッケージする
+Not yet supported: Windows code signing, macOS signing / notarization, Linux aarch64.
+
+## License
+
+MIT
