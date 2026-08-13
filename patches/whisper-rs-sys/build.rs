@@ -339,6 +339,11 @@ fn main() {
         config.define("CMAKE_CXX_COMPILER", "icpx");
     }
 
+    // Stale CMakeCache.txt causes cmake to re-configure when the compiler path
+    // changes, and the re-configure loses -D flags (WHISPER_BUILD_EXAMPLES=OFF
+    // reverts to ON, then add_subdirectory(examples) fails on the missing dir).
+    let _ = std::fs::remove_file(out.join("build/CMakeCache.txt"));
+
     let destination = config.build();
 
     add_link_search_path(&out.join("build")).unwrap();
