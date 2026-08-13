@@ -327,14 +327,14 @@ pub struct max_align_t {
 
 pub type __u_char = ::std::os::raw::c_uchar;
 pub type __u_short = ::std::os::raw::c_ushort;
-pub type __u_int = ::std::os::raw::c_uint;
+pub type __u_int = ::std::os::raw::c_int;
 pub type __u_long = ::std::os::raw::c_ulong;
 pub type __int8_t = ::std::os::raw::c_schar;
 pub type __uint8_t = ::std::os::raw::c_uchar;
 pub type __int16_t = ::std::os::raw::c_short;
 pub type __uint16_t = ::std::os::raw::c_ushort;
 pub type __int32_t = ::std::os::raw::c_int;
-pub type __uint32_t = ::std::os::raw::c_uint;
+pub type __uint32_t = ::std::os::raw::c_int;
 pub type __int64_t = ::std::os::raw::c_long;
 pub type __uint64_t = ::std::os::raw::c_ulong;
 pub type __int_least8_t = __int8_t;
@@ -350,11 +350,11 @@ pub type __u_quad_t = ::std::os::raw::c_ulong;
 pub type __intmax_t = ::std::os::raw::c_long;
 pub type __uintmax_t = ::std::os::raw::c_ulong;
 pub type __dev_t = ::std::os::raw::c_ulong;
-pub type __uid_t = ::std::os::raw::c_uint;
-pub type __gid_t = ::std::os::raw::c_uint;
+pub type __uid_t = ::std::os::raw::c_int;
+pub type __gid_t = ::std::os::raw::c_int;
 pub type __ino_t = ::std::os::raw::c_ulong;
 pub type __ino64_t = ::std::os::raw::c_ulong;
-pub type __mode_t = ::std::os::raw::c_uint;
+pub type __mode_t = ::std::os::raw::c_int;
 pub type __nlink_t = ::std::os::raw::c_ulong;
 pub type __off_t = ::std::os::raw::c_long;
 pub type __off64_t = ::std::os::raw::c_long;
@@ -369,9 +369,9 @@ pub struct __fsid_t {
 pub type __clock_t = ::std::os::raw::c_long;
 pub type __rlim_t = ::std::os::raw::c_ulong;
 pub type __rlim64_t = ::std::os::raw::c_ulong;
-pub type __id_t = ::std::os::raw::c_uint;
+pub type __id_t = ::std::os::raw::c_int;
 pub type __time_t = ::std::os::raw::c_long;
-pub type __useconds_t = ::std::os::raw::c_uint;
+pub type __useconds_t = ::std::os::raw::c_int;
 pub type __suseconds_t = ::std::os::raw::c_long;
 pub type __suseconds64_t = ::std::os::raw::c_long;
 pub type __daddr_t = ::std::os::raw::c_int;
@@ -392,7 +392,7 @@ pub type __syscall_ulong_t = ::std::os::raw::c_ulong;
 pub type __loff_t = __off64_t;
 pub type __caddr_t = *mut ::std::os::raw::c_char;
 pub type __intptr_t = ::std::os::raw::c_long;
-pub type __socklen_t = ::std::os::raw::c_uint;
+pub type __socklen_t = ::std::os::raw::c_int;
 pub type __sig_atomic_t = ::std::os::raw::c_int;
 pub type int_least8_t = __int_least8_t;
 pub type int_least16_t = __int_least16_t;
@@ -422,7 +422,7 @@ pub struct __mbstate_t {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union __mbstate_t__bindgen_ty_1 {
-    pub __wch: ::std::os::raw::c_uint,
+    pub __wch: ::std::os::raw::c_int,
     pub __wchb: [::std::os::raw::c_char; 4usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
@@ -1157,14 +1157,14 @@ pub const ggml_type_GGML_TYPE_BF16: ggml_type = 30;
 pub const ggml_type_GGML_TYPE_TQ1_0: ggml_type = 34;
 pub const ggml_type_GGML_TYPE_TQ2_0: ggml_type = 35;
 pub const ggml_type_GGML_TYPE_COUNT: ggml_type = 39;
-pub type ggml_type = ::std::os::raw::c_uint;
+pub type ggml_type = ::std::os::raw::c_int;
 pub const ggml_prec_GGML_PREC_DEFAULT: ggml_prec = 0;
 pub const ggml_prec_GGML_PREC_F32: ggml_prec = 1;
-pub type ggml_prec = ::std::os::raw::c_uint;
+pub type ggml_prec = ::std::os::raw::c_int;
 pub const ggml_backend_type_GGML_BACKEND_TYPE_CPU: ggml_backend_type = 0;
 pub const ggml_backend_type_GGML_BACKEND_TYPE_GPU: ggml_backend_type = 10;
 pub const ggml_backend_type_GGML_BACKEND_TYPE_GPU_SPLIT: ggml_backend_type = 20;
-pub type ggml_backend_type = ::std::os::raw::c_uint;
+pub type ggml_backend_type = ::std::os::raw::c_int;
 pub const ggml_ftype_GGML_FTYPE_UNKNOWN: ggml_ftype = -1;
 pub const ggml_ftype_GGML_FTYPE_ALL_F32: ggml_ftype = 0;
 pub const ggml_ftype_GGML_FTYPE_MOSTLY_F16: ggml_ftype = 1;
@@ -1273,7 +1273,7 @@ pub const ggml_op_GGML_OP_CROSS_ENTROPY_LOSS: ggml_op = 79;
 pub const ggml_op_GGML_OP_CROSS_ENTROPY_LOSS_BACK: ggml_op = 80;
 pub const ggml_op_GGML_OP_OPT_STEP_ADAMW: ggml_op = 81;
 pub const ggml_op_GGML_OP_COUNT: ggml_op = 82;
-pub type ggml_op = ::std::os::raw::c_uint;
+pub type ggml_op = ::std::os::raw::c_int;
 pub const ggml_unary_op_GGML_UNARY_OP_ABS: ggml_unary_op = 0;
 pub const ggml_unary_op_GGML_UNARY_OP_SGN: ggml_unary_op = 1;
 pub const ggml_unary_op_GGML_UNARY_OP_NEG: ggml_unary_op = 2;
@@ -1289,23 +1289,23 @@ pub const ggml_unary_op_GGML_UNARY_OP_HARDSWISH: ggml_unary_op = 11;
 pub const ggml_unary_op_GGML_UNARY_OP_HARDSIGMOID: ggml_unary_op = 12;
 pub const ggml_unary_op_GGML_UNARY_OP_EXP: ggml_unary_op = 13;
 pub const ggml_unary_op_GGML_UNARY_OP_COUNT: ggml_unary_op = 14;
-pub type ggml_unary_op = ::std::os::raw::c_uint;
+pub type ggml_unary_op = ::std::os::raw::c_int;
 pub const ggml_object_type_GGML_OBJECT_TYPE_TENSOR: ggml_object_type = 0;
 pub const ggml_object_type_GGML_OBJECT_TYPE_GRAPH: ggml_object_type = 1;
 pub const ggml_object_type_GGML_OBJECT_TYPE_WORK_BUFFER: ggml_object_type = 2;
-pub type ggml_object_type = ::std::os::raw::c_uint;
+pub type ggml_object_type = ::std::os::raw::c_int;
 pub const ggml_log_level_GGML_LOG_LEVEL_NONE: ggml_log_level = 0;
 pub const ggml_log_level_GGML_LOG_LEVEL_DEBUG: ggml_log_level = 1;
 pub const ggml_log_level_GGML_LOG_LEVEL_INFO: ggml_log_level = 2;
 pub const ggml_log_level_GGML_LOG_LEVEL_WARN: ggml_log_level = 3;
 pub const ggml_log_level_GGML_LOG_LEVEL_ERROR: ggml_log_level = 4;
 pub const ggml_log_level_GGML_LOG_LEVEL_CONT: ggml_log_level = 5;
-pub type ggml_log_level = ::std::os::raw::c_uint;
+pub type ggml_log_level = ::std::os::raw::c_int;
 pub const ggml_tensor_flag_GGML_TENSOR_FLAG_INPUT: ggml_tensor_flag = 1;
 pub const ggml_tensor_flag_GGML_TENSOR_FLAG_OUTPUT: ggml_tensor_flag = 2;
 pub const ggml_tensor_flag_GGML_TENSOR_FLAG_PARAM: ggml_tensor_flag = 4;
 pub const ggml_tensor_flag_GGML_TENSOR_FLAG_LOSS: ggml_tensor_flag = 8;
-pub type ggml_tensor_flag = ::std::os::raw::c_uint;
+pub type ggml_tensor_flag = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ggml_init_params {
@@ -2507,7 +2507,7 @@ unsafe extern "C" {
 pub const ggml_op_pool_GGML_OP_POOL_MAX: ggml_op_pool = 0;
 pub const ggml_op_pool_GGML_OP_POOL_AVG: ggml_op_pool = 1;
 pub const ggml_op_pool_GGML_OP_POOL_COUNT: ggml_op_pool = 2;
-pub type ggml_op_pool = ::std::os::raw::c_uint;
+pub type ggml_op_pool = ::std::os::raw::c_int;
 unsafe extern "C" {
     pub fn ggml_pool_1d(
         ctx: *mut ggml_context,
@@ -2590,7 +2590,7 @@ unsafe extern "C" {
 }
 pub const ggml_sort_order_GGML_SORT_ORDER_ASC: ggml_sort_order = 0;
 pub const ggml_sort_order_GGML_SORT_ORDER_DESC: ggml_sort_order = 1;
-pub type ggml_sort_order = ::std::os::raw::c_uint;
+pub type ggml_sort_order = ::std::os::raw::c_int;
 unsafe extern "C" {
     pub fn ggml_argsort(
         ctx: *mut ggml_context,
@@ -3084,7 +3084,7 @@ pub const gguf_type_GGUF_TYPE_UINT64: gguf_type = 10;
 pub const gguf_type_GGUF_TYPE_INT64: gguf_type = 11;
 pub const gguf_type_GGUF_TYPE_FLOAT64: gguf_type = 12;
 pub const gguf_type_GGUF_TYPE_COUNT: gguf_type = 13;
-pub type gguf_type = ::std::os::raw::c_uint;
+pub type gguf_type = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct gguf_context {
@@ -3351,7 +3351,7 @@ pub const ggml_sched_priority_GGML_SCHED_PRIO_NORMAL: ggml_sched_priority = 0;
 pub const ggml_sched_priority_GGML_SCHED_PRIO_MEDIUM: ggml_sched_priority = 1;
 pub const ggml_sched_priority_GGML_SCHED_PRIO_HIGH: ggml_sched_priority = 2;
 pub const ggml_sched_priority_GGML_SCHED_PRIO_REALTIME: ggml_sched_priority = 3;
-pub type ggml_sched_priority = ::std::os::raw::c_uint;
+pub type ggml_sched_priority = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ggml_threadpool_params {
@@ -3519,7 +3519,7 @@ pub const ggml_backend_buffer_usage_GGML_BACKEND_BUFFER_USAGE_WEIGHTS: ggml_back
     1;
 pub const ggml_backend_buffer_usage_GGML_BACKEND_BUFFER_USAGE_COMPUTE: ggml_backend_buffer_usage =
     2;
-pub type ggml_backend_buffer_usage = ::std::os::raw::c_uint;
+pub type ggml_backend_buffer_usage = ::std::os::raw::c_int;
 unsafe extern "C" {
     pub fn ggml_backend_buffer_name(buffer: ggml_backend_buffer_t)
         -> *const ::std::os::raw::c_char;
@@ -3715,7 +3715,7 @@ unsafe extern "C" {
 pub const ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_CPU: ggml_backend_dev_type = 0;
 pub const ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_GPU: ggml_backend_dev_type = 1;
 pub const ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_ACCEL: ggml_backend_dev_type = 2;
-pub type ggml_backend_dev_type = ::std::os::raw::c_uint;
+pub type ggml_backend_dev_type = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ggml_backend_dev_caps {
@@ -4058,7 +4058,7 @@ pub const ggml_numa_strategy_GGML_NUMA_STRATEGY_ISOLATE: ggml_numa_strategy = 2;
 pub const ggml_numa_strategy_GGML_NUMA_STRATEGY_NUMACTL: ggml_numa_strategy = 3;
 pub const ggml_numa_strategy_GGML_NUMA_STRATEGY_MIRROR: ggml_numa_strategy = 4;
 pub const ggml_numa_strategy_GGML_NUMA_STRATEGY_COUNT: ggml_numa_strategy = 5;
-pub type ggml_numa_strategy = ::std::os::raw::c_uint;
+pub type ggml_numa_strategy = ::std::os::raw::c_int;
 unsafe extern "C" {
     pub fn ggml_numa_init(numa: ggml_numa_strategy);
 }
@@ -4320,7 +4320,7 @@ pub const whisper_alignment_heads_preset_WHISPER_AHEADS_LARGE_V3: whisper_alignm
     13;
 pub const whisper_alignment_heads_preset_WHISPER_AHEADS_LARGE_V3_TURBO:
     whisper_alignment_heads_preset = 14;
-pub type whisper_alignment_heads_preset = ::std::os::raw::c_uint;
+pub type whisper_alignment_heads_preset = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct whisper_ahead {
@@ -4390,7 +4390,7 @@ pub const whisper_gretype_WHISPER_GRETYPE_CHAR: whisper_gretype = 3;
 pub const whisper_gretype_WHISPER_GRETYPE_CHAR_NOT: whisper_gretype = 4;
 pub const whisper_gretype_WHISPER_GRETYPE_CHAR_RNG_UPPER: whisper_gretype = 5;
 pub const whisper_gretype_WHISPER_GRETYPE_CHAR_ALT: whisper_gretype = 6;
-pub type whisper_gretype = ::std::os::raw::c_uint;
+pub type whisper_gretype = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct whisper_grammar_element {
@@ -4735,7 +4735,7 @@ unsafe extern "C" {
 }
 pub const whisper_sampling_strategy_WHISPER_SAMPLING_GREEDY: whisper_sampling_strategy = 0;
 pub const whisper_sampling_strategy_WHISPER_SAMPLING_BEAM_SEARCH: whisper_sampling_strategy = 1;
-pub type whisper_sampling_strategy = ::std::os::raw::c_uint;
+pub type whisper_sampling_strategy = ::std::os::raw::c_int;
 pub type whisper_new_segment_callback = ::std::option::Option<
     unsafe extern "C" fn(
         ctx: *mut whisper_context,
@@ -5041,8 +5041,8 @@ pub type __builtin_va_list = [__va_list_tag; 1usize];
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __va_list_tag {
-    pub gp_offset: ::std::os::raw::c_uint,
-    pub fp_offset: ::std::os::raw::c_uint,
+    pub gp_offset: ::std::os::raw::c_int,
+    pub fp_offset: ::std::os::raw::c_int,
     pub overflow_arg_area: *mut ::std::os::raw::c_void,
     pub reg_save_area: *mut ::std::os::raw::c_void,
 }
