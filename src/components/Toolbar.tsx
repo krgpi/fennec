@@ -3,6 +3,7 @@ import { api, InputDeviceInfo } from "../api/commands";
 import { useRecording } from "../stores/recording";
 import { useSettings } from "../stores/settings";
 import { formatTime } from "../utils/format";
+import { isMac, isWindows } from "../utils/platform";
 import { useTranslation } from "react-i18next";
 import SettingsDialog from "./settings/SettingsDialog";
 
@@ -78,10 +79,16 @@ export default function Toolbar() {
 
   const noInputMessage = noInput
     ? noInput.sys && noInput.mic
-      ? t("音声が検出されていません。システム設定でマイクとシステム音声の権限を確認してください。")
+      ? isMac
+        ? t("音声が検出されていません。システム設定でマイクとシステム音声の権限を確認してください。")
+        : isWindows
+          ? t("音声が検出されていません。設定 > プライバシーとセキュリティ > マイク で権限を確認してください。")
+          : t("音声が検出されていません。マイクの権限とサウンド設定を確認してください。")
       : noInput.mic
         ? t("マイク入力が検出されていません。権限とデバイスを確認してください。")
-        : t("システム音声が検出されていません。権限を確認してください。")
+        : isMac
+          ? t("システム音声が検出されていません。権限を確認してください。")
+          : t("システム音声が検出されていません。PCから音が再生されているか確認してください。")
     : null;
 
   return (

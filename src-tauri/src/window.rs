@@ -5,6 +5,10 @@ pub fn setup(app: &AppHandle) {
         let handle = app.clone();
         window.on_window_event(move |event| match event {
             WindowEvent::CloseRequested { api, .. } => {
+                if !runs_in_background(&handle) {
+                    finish_recording_before_exit(&handle);
+                    return;
+                }
                 api.prevent_close();
                 if let Some(window) = handle.get_webview_window("main") {
                     let _ = window.hide();
@@ -16,6 +20,32 @@ pub fn setup(app: &AppHandle) {
         });
     }
     apply_dock_policy(app);
+}
+
+// macOSはウィンドウを閉じてもDockから復帰できるが、Windows/Linuxは通知領域アイコンが
+// 無いと復帰手段が無くなるため、その場合はウィンドウを閉じたら終了する
+#[cfg(target_os = "macos")]
+fn runs_in_background(_app: &AppHandle) -> bool {
+    true
+}
+
+#[cfg(not(target_os = "macos"))]
+fn runs_in_background(app: &AppHandle) -> bool {
+    app.try_state::<crate::state::AppState>()
+        .map(|state| state.settings.read().unwrap().show_in_menu_bar)
+        .unwrap_or(false)
+}
+
+fn finish_recording_before_exit(app: &AppHandle) {
+    let recording = app
+        .try_state::<crate::state::AppState>()
+        .map(|state| state.recorder.lock().unwrap().is_some())
+        .unwrap_or(false);
+    if recording {
+        if let Err(e) = crate::commands::recording::perform_stop(app) {
+            log::warn!("failed to stop recording before exit: {e}");
+        }
+    }
 }
 
 pub fn show_main(app: &AppHandle) {

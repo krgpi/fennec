@@ -66,5 +66,26 @@
   "モデルをダウンロード": { "en": "Download model" },
   "ICS購読URL": { "en": "ICS subscription URLs" },
   "1行に1つのURLを入力します。": { "en": "Enter one URL per line." },
-  "録音中...": { "en": "Recording..." }
+  "録音中...": { "en": "Recording..." },
+  "システムの起動時に自動的にアプリを起動します。": {
+    "en": "Automatically launch the app when your system starts."
+  },
+  "通知領域に表示": { "en": "Show in notification area" },
+  "通知領域のアイコンからすばやく録音の開始・停止ができます。ウィンドウを閉じてもアプリは常駐します。": {
+    "en": "Quickly start and stop recording from the notification area icon. The app keeps running after you close the window."
+  },
+  "ICS購読カレンダーの会議予定に合わせて録音開始を提案します。": {
+    "en": "Suggests starting a recording for meetings in your subscribed ICS calendars."
+  },
+  "エクスプローラーで開く": { "en": "Show in Explorer" },
+  "フォルダーを開く": { "en": "Open Folder" },
+  "音声が検出されていません。設定 > プライバシーとセキュリティ > マイク で権限を確認してください。": {
+    "en": "No audio detected. Check permissions under Settings > Privacy & security > Microphone."
+  },
+  "音声が検出されていません。マイクの権限とサウンド設定を確認してください。": {
+    "en": "No audio detected. Check microphone permissions and your sound settings."
+  },
+  "システム音声が検出されていません。PCから音が再生されているか確認してください。": {
+    "en": "No system audio detected. Check that audio is playing on this PC."
+  }
 }

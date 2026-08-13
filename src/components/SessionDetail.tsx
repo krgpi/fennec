@@ -7,6 +7,7 @@ import { useRecording } from "../stores/recording";
 import { useSessions } from "../stores/sessions";
 import type { RecordingSession, TranscriptEntry } from "../types";
 import { formatSessionDate } from "../utils/format";
+import { revealFolderKey } from "../utils/platform";
 import { useDebouncedSave } from "../utils/useDebouncedSave";
 import MinutesView from "./MinutesView";
 import PlayerBar from "./PlayerBar";
@@ -102,7 +103,7 @@ export default function SessionDetail({ session }: { session: RecordingSession }
             className="hover:text-neutral-800 dark:hover:text-neutral-200"
             onClick={() => api.revealSessionFolder(sessionId)}
           >
-            {t("Finderで開く")}
+            {t(revealFolderKey)}
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { useRecording } from "../stores/recording";
 import { useSessions } from "../stores/sessions";
 import type { RecordingSession } from "../types";
 import { relativeDateLabel, sectionLabel } from "../utils/format";
+import { revealFolderKey } from "../utils/platform";
 
 function groupSessions(sessions: RecordingSession[], lang: string) {
   const groups: { label: string; items: RecordingSession[] }[] = [];
@@ -155,7 +156,7 @@ export default function SessionList() {
               api.revealSessionFolder(menu.sessionId).catch(console.error);
             }}
           >
-            {t("Finderで開く")}
+            {t(revealFolderKey)}
           </button>
           <button
             className="w-full px-3 py-1.5 text-left text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-700"

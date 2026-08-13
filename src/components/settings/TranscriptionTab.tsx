@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { api, WhisperModelStatus } from "../../api/commands";
 import { useJobs } from "../../stores/jobs";
 import { useSettings } from "../../stores/settings";
+import { isMac } from "../../utils/platform";
 import { buttonClass, inputClass, Section, ToggleRow } from "./shared";
 
 export default function TranscriptionTab() {
@@ -23,7 +24,6 @@ export default function TranscriptionTab() {
   if (!settings) return null;
 
   const live = settings.liveTranscriptionEnabled;
-  const isMac = navigator.userAgent.includes("Mac");
 
   const commitLocale = () => {
     const v = locale.trim();

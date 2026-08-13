@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { calendarApi, CalendarInfo } from "../../api/calendar";
 import { useSettings } from "../../stores/settings";
+import { isMac } from "../../utils/platform";
 import { buttonClass, inputClass, Section, ToggleRow } from "./shared";
 
 export default function RecordingTab() {
@@ -113,7 +114,11 @@ export default function RecordingTab() {
       <Section title={t("会議リマインダー")}>
         <ToggleRow
           label={t("会議リマインダー")}
-          description={t("カレンダーの会議予定に合わせて録音開始を提案します。")}
+          description={
+            isMac
+              ? t("カレンダーの会議予定に合わせて録音開始を提案します。")
+              : t("ICS購読カレンダーの会議予定に合わせて録音開始を提案します。")
+          }
           checked={settings.meetingReminderEnabled}
           onChange={(v) => void toggleMeetingReminder(v)}
         />

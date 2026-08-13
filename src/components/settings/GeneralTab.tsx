@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { setAppLanguage } from "../../i18n";
 import { useSettings } from "../../stores/settings";
+import { isMac } from "../../utils/platform";
 import { inputClass, Section, ToggleRow } from "./shared";
 
 export default function GeneralTab() {
@@ -37,34 +38,55 @@ export default function GeneralTab() {
       <Section>
         <ToggleRow
           label={t("ログイン時に起動")}
-          description={t("Macの起動時に自動的にアプリを起動します。")}
+          description={
+            isMac
+              ? t("Macの起動時に自動的にアプリを起動します。")
+              : t("システムの起動時に自動的にアプリを起動します。")
+          }
           checked={settings.launchAtLogin}
           onChange={(checked) => update({ launchAtLogin: checked })}
         />
-        <div className="flex flex-col gap-1">
+        {isMac ? (
+          <>
+            <div className="flex flex-col gap-1">
+              <ToggleRow
+                label={t("メニューバーに表示")}
+                description={t(
+                  "メニューバーからすばやく録音の開始・停止ができます。録音中は経過時間が表示されます。",
+                )}
+                checked={settings.showInMenuBar || settings.hideFromDock}
+                disabled={settings.hideFromDock}
+                onChange={(checked) => update({ showInMenuBar: checked })}
+              />
+              {settings.hideFromDock && (
+                <p className="pl-6 text-xs text-amber-600 dark:text-amber-500">
+                  {t("Dockアイコンを非表示にしている場合、メニューバー表示は必須です。")}
+                </p>
+              )}
+            </div>
+            <ToggleRow
+              label={t("Dockアイコンを非表示")}
+              description={t("ウィンドウが表示されていないときはDockアイコンを非表示にします。")}
+              checked={settings.hideFromDock}
+              onChange={(checked) =>
+                update(
+                  checked
+                    ? { hideFromDock: true, showInMenuBar: true }
+                    : { hideFromDock: false },
+                )
+              }
+            />
+          </>
+        ) : (
           <ToggleRow
-            label={t("メニューバーに表示")}
+            label={t("通知領域に表示")}
             description={t(
-              "メニューバーからすばやく録音の開始・停止ができます。録音中は経過時間が表示されます。",
+              "通知領域のアイコンからすばやく録音の開始・停止ができます。ウィンドウを閉じてもアプリは常駐します。",
             )}
-            checked={settings.showInMenuBar || settings.hideFromDock}
-            disabled={settings.hideFromDock}
+            checked={settings.showInMenuBar}
             onChange={(checked) => update({ showInMenuBar: checked })}
           />
-          {settings.hideFromDock && (
-            <p className="pl-6 text-xs text-amber-600 dark:text-amber-500">
-              {t("Dockアイコンを非表示にしている場合、メニューバー表示は必須です。")}
-            </p>
-          )}
-        </div>
-        <ToggleRow
-          label={t("Dockアイコンを非表示")}
-          description={t("ウィンドウが表示されていないときはDockアイコンを非表示にします。")}
-          checked={settings.hideFromDock}
-          onChange={(checked) =>
-            update(checked ? { hideFromDock: true, showInMenuBar: true } : { hideFromDock: false })
-          }
-        />
+        )}
       </Section>
     </div>
   );
