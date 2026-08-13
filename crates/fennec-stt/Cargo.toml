@@ -14,7 +14,9 @@ whisper-rs = "0.14"
 ureq = "2"
 tar = "0.4"
 bzip2 = "0.4"
-# static は onnxruntime 同梱を不要にする代わり、Linux x86_64 で .cargo/config.toml の relocation-model=dynamic-no-pic を要求する
+sherpa-rs = { version = "0.6.8", default-features = false, features = ["download-binaries"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
 sherpa-rs = { version = "0.6.8", default-features = false, features = ["download-binaries", "static"] }
 
 [dev-dependencies]

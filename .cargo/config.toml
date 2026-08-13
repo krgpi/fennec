@@ -1,6 +1,3 @@
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "relocation-model=dynamic-no-pic"]
-
 [target.x86_64-pc-windows-msvc]
 rustflags = [
   "-C", "link-arg=advapi32.lib",
