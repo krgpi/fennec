@@ -66,6 +66,15 @@ fn main() {
             }
         }
     }
+    // cuda feature ではなく自動検出で CUDA を有効にした場合も同じライブラリをリンクする
+    if cfg!(not(feature = "cuda")) && cfg!(target_os = "windows") && cuda_toolkit_available() {
+        println!("cargo:rustc-link-lib=cublas");
+        println!("cargo:rustc-link-lib=cudart");
+        println!("cargo:rustc-link-lib=cublasLt");
+        println!("cargo:rustc-link-lib=cuda");
+        let cuda_path = PathBuf::from(env::var("CUDA_PATH").unwrap()).join("lib/x64");
+        println!("cargo:rustc-link-search={}", cuda_path.display());
+    }
     #[cfg(feature = "hipblas")]
     {
         println!("cargo:rustc-link-lib=hipblas");
@@ -104,8 +113,10 @@ fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let whisper_root = out.join("whisper.cpp/");
 
-    if !whisper_root.exists() {
-        std::fs::create_dir_all(&whisper_root).unwrap();
+    if !whisper_root.join("CMakeLists.txt").exists() {
+        if whisper_root.exists() {
+            std::fs::remove_dir_all(&whisper_root).unwrap();
+        }
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
         let local_src = manifest_dir.join("whisper.cpp");
         let src = if local_src.exists() {
@@ -214,6 +225,10 @@ fn main() {
 
     if cfg!(target_os = "windows") {
         config.cxxflag("/utf-8");
+        // sherpa-rs-sys(static) と Rust の +crt-static が /MT なので whisper 側も揃える。
+        // 混在すると LNK2038 RuntimeLibrary mismatch でリンクできない。
+        config.define("CMAKE_POLICY_DEFAULT_CMP0091", "NEW");
+        config.define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded");
         println!("cargo:rustc-link-lib=advapi32");
     }
 
@@ -226,6 +241,15 @@ fn main() {
         config.define("GGML_CUDA", "ON");
         config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
         config.define("CMAKE_CUDA_FLAGS", "-Xcompiler=-fPIC");
+    } else if cfg!(target_os = "windows") && cuda_toolkit_available() {
+        println!("cargo:warning=CUDA Toolkit detected; building whisper with the CUDA backend");
+        config.define("GGML_CUDA", "ON");
+        // -allow-unsupported-compiler: CUDA Toolkit の対応表より新しい MSVC が入っていることが多く、nvcc が弾くため
+        // /Zc:preprocessor: CUDA 13 系の CCCL ヘッダが準拠プリプロセッサを要求する
+        config.define(
+            "CMAKE_CUDA_FLAGS",
+            "-allow-unsupported-compiler -Xcompiler=/Zc:preprocessor",
+        );
     }
 
     if cfg!(feature = "hipblas") {
@@ -350,7 +374,9 @@ fn main() {
         println!("cargo:rustc-link-lib=static=ggml-metal");
     }
 
-    if cfg!(feature = "cuda") {
+    if cfg!(feature = "cuda")
+        || (cfg!(target_os = "windows") && cuda_toolkit_available())
+    {
         println!("cargo:rustc-link-lib=static=ggml-cuda");
     }
 
@@ -371,6 +397,84 @@ fn main() {
 
     // for whatever reason this file is generated during build and triggers cargo complaining
     _ = std::fs::remove_file("bindings/javascript/package.json");
+}
+
+/// CUDA Toolkit が使える状態なら GPU バックエンドを自動で有効にする。
+/// CPU専用のバイナリが必要なとき（NVIDIA以外の環境へ配布するビルドなど）は
+/// FENNEC_NO_CUDA=1 で抑止する。
+///
+/// 検出しただけでビルドが壊れないよう、実際にコンパイルが通る条件が揃ったときだけ true を返す。
+fn cuda_toolkit_available() -> bool {
+    static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *AVAILABLE.get_or_init(|| {
+        println!("cargo:rerun-if-env-changed=FENNEC_NO_CUDA");
+        println!("cargo:rerun-if-env-changed=CUDA_PATH");
+        if env::var_os("FENNEC_NO_CUDA").is_some() {
+            return false;
+        }
+        let Some(root) = env::var_os("CUDA_PATH").map(PathBuf::from) else {
+            return false;
+        };
+        if !root.join("bin").join("nvcc.exe").exists() {
+            return false;
+        }
+        // MSVC 14.4x の STL は CUDA 12.4 以降でないと yvals_core.h の static_assert (STL1002) で落ちる
+        if !cuda_version_at_least(&root, 12, 4) {
+            println!("cargo:warning=CUDA Toolkit is older than 12.4; building whisper for CPU");
+            return false;
+        }
+        // CUDA より後に Visual Studio を入れると MSBuild 統合が無く "No CUDA toolset found" になる
+        if !vs_cuda_integration_installed() {
+            println!(
+                "cargo:warning=CUDA Visual Studio integration not found; building whisper for CPU"
+            );
+            return false;
+        }
+        true
+    })
+}
+
+/// `.../CUDA/v12.6` のようなディレクトリ名からバージョンを読む
+fn cuda_version_at_least(root: &PathBuf, major: u32, minor: u32) -> bool {
+    let Some(name) = root.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    let Some((v_major, v_minor)) = name.trim_start_matches('v').split_once('.') else {
+        return false;
+    };
+    match (v_major.parse::<u32>(), v_minor.parse::<u32>()) {
+        (Ok(a), Ok(b)) => (a, b) >= (major, minor),
+        _ => false,
+    }
+}
+
+fn vs_cuda_integration_installed() -> bool {
+    let roots = [
+        env::var_os("ProgramFiles"),
+        env::var_os("ProgramFiles(x86)"),
+    ];
+    for root in roots.into_iter().flatten() {
+        let vs = PathBuf::from(root).join("Microsoft Visual Studio").join("2022");
+        let Ok(editions) = std::fs::read_dir(&vs) else {
+            continue;
+        };
+        for edition in editions.flatten() {
+            let customizations = edition
+                .path()
+                .join("MSBuild/Microsoft/VC/v170/BuildCustomizations");
+            let Ok(entries) = std::fs::read_dir(customizations) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with("CUDA ") && name.ends_with(".props") {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 // From https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2462
