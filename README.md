@@ -128,7 +128,7 @@ Platform differences are absorbed inside the crates — `src-tauri` stays free o
 GitHub Releases is the source of truth; package managers pull from it.
 
 1. Bump `version` in `src-tauri/tauri.conf.json`, `package.json`, and the root `Cargo.toml`, push a `vX.Y.Z` tag, and create a draft release.
-2. Run `scripts/release.sh vX.Y.Z` on a macOS, Windows, and Linux machine, uploading each build to the same draft. (Builds are local — the Swift helper needs the macOS 26 SDK, which CI runners don't have.)
+2. Run `scripts/release.sh` on a macOS, Windows, and Linux machine, uploading each build to the same draft. (The tag is derived from `tauri.conf.json`; pass `--no-upload` to build without publishing.) (Builds are local — the Swift helper needs the macOS 26 SDK, which CI runners don't have.)
 3. Publish the draft.
 4. Run `.github/workflows/publish-packages.yml` manually against the tag to update winget and AUR.
 

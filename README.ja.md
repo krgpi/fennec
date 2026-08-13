@@ -128,7 +128,7 @@ OS差はクレート内で吸収し、`src-tauri` に `cfg` を漏らさない�
 GitHub Releases が配布物の正本で、そこから各パッケージマネージャに流します。
 
 1. `src-tauri/tauri.conf.json` / `package.json` / ルート `Cargo.toml` の `version` を上げ、`vX.Y.Z` タグを push して draft release を作る
-2. macOS / Windows / Linux それぞれのマシンで `scripts/release.sh vX.Y.Z` を実行し、同じ draft に成果物をアップロードする（Swiftヘルパーが macOS 26 SDK を要求しCIランナーで作れないため、ビルドはローカルに揃えている）
+2. macOS / Windows / Linux それぞれのマシンで `scripts/release.sh` を実行し、同じ draft に成果物をアップロードする（タグは `tauri.conf.json` から導出。`--no-upload` を渡すとビルドのみ）（Swiftヘルパーが macOS 26 SDK を要求しCIランナーで作れないため、ビルドはローカルに揃えている）
 3. draft を publish する
 4. `.github/workflows/publish-packages.yml` を該当タグで手動実行し、winget と AUR を更新する
 

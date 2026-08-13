@@ -4,7 +4,13 @@ cd "$(dirname "$0")/.."
 
 VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
 OUT="dist-release"
-TAG="${1:-}"
+TAG="v${VERSION}"
+SKIP_UPLOAD="${1:-}"
+
+if [ -n "$SKIP_UPLOAD" ] && [ "$SKIP_UPLOAD" != "--no-upload" ]; then
+    echo "usage: $(basename "$0") [--no-upload]   (tag is derived from tauri.conf.json: $TAG)" >&2
+    exit 1
+fi
 
 # 配布物はCUDA Toolkitの無い環境でも動く必要がある。ビルドマシンにCUDAが入っていると
 # build.rsが自動検出してcudart/cublasを動的リンクし、一般ユーザーの環境で起動できなくなる
@@ -45,7 +51,7 @@ esac
 echo "release artifacts:"
 ls -la "$OUT"
 
-if [ -n "$TAG" ]; then
+if [ "$SKIP_UPLOAD" != "--no-upload" ]; then
     gh release upload "$TAG" "$OUT"/* --clobber
     echo "uploaded to release $TAG"
 
