@@ -143,8 +143,9 @@ fn main() {
         });
     }
 
-    if env::var("WHISPER_DONT_GENERATE_BINDINGS").is_ok() {
-        let _: u64 = std::fs::copy("src/bindings.rs", out.join("bindings.rs"))
+    if env::var("WHISPER_DONT_GENERATE_BINDINGS").is_ok() || target.contains("msvc") {
+        let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let _: u64 = std::fs::copy(manifest_dir.join("src/bindings.rs"), out.join("bindings.rs"))
             .expect("Failed to copy bindings.rs");
     } else {
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
