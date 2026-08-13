@@ -13,6 +13,9 @@ version = "2.0.0"
 edition = "2021"
 license = "MIT"
 
+[patch.crates-io]
+whisper-rs-sys = { path = "patches/whisper-rs-sys" }
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
