@@ -161,9 +161,9 @@ fn main() {
         }
 
         let bindings = bindings
-            .clang_arg("-I./whisper.cpp/")
-            .clang_arg("-I./whisper.cpp/include")
-            .clang_arg("-I./whisper.cpp/ggml/include")
+            .clang_arg(format!("-I{}", whisper_root.display()))
+            .clang_arg(format!("-I{}", whisper_root.join("include").display()))
+            .clang_arg(format!("-I{}", whisper_root.join("ggml/include").display()))
             .layout_tests(false)
             .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
             .generate();
