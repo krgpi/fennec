@@ -162,6 +162,14 @@ fn main() {
                 .clang_arg("-DGGML_USE_VULKAN=1");
         }
 
+        if target.contains("msvc") {
+            if let Ok(include) = env::var("INCLUDE") {
+                for path in include.split(';').filter(|p| !p.is_empty()) {
+                    bindings = bindings.clang_arg(format!("-isystem{}", path));
+                }
+            }
+        }
+
         let bindings = bindings
             .clang_arg(format!("-I{}", whisper_root.display()))
             .clang_arg(format!("-I{}", whisper_root.join("include").display()))
