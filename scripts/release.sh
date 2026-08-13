@@ -19,22 +19,23 @@ mkdir -p "$OUT"
 rm -f "$OUT"/*
 
 case "$(uname -s)" in
+# bundle/ には過去のバージョンの成果物が残るため、必ず今回のVERSIONで絞る
 Darwin)
-    DMG=$(ls target/release/bundle/dmg/*.dmg | head -1)
+    DMG=$(ls target/release/bundle/dmg/*_${VERSION}_*.dmg | head -1)
     APP=target/release/bundle/macos/Fennec.app
     cp "$DMG" "$OUT/Fennec_${VERSION}_$(uname -m).dmg"
     ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/Fennec_${VERSION}_$(uname -m).zip"
     SUMS="SHA256SUMS-macos.txt"
     ;;
 Linux)
-    cp target/release/bundle/deb/*.deb "$OUT/" 2>/dev/null || true
-    cp target/release/bundle/appimage/*.AppImage "$OUT/" 2>/dev/null || true
-    cp target/release/bundle/rpm/*.rpm "$OUT/" 2>/dev/null || true
+    cp target/release/bundle/deb/*_${VERSION}_*.deb "$OUT/" 2>/dev/null || true
+    cp target/release/bundle/appimage/*_${VERSION}_*.AppImage "$OUT/" 2>/dev/null || true
+    cp target/release/bundle/rpm/*-${VERSION}-*.rpm "$OUT/" 2>/dev/null || true
     SUMS="SHA256SUMS-linux.txt"
     ;;
 *)
-    cp target/release/bundle/nsis/*.exe "$OUT/" 2>/dev/null || true
-    cp target/release/bundle/msi/*.msi "$OUT/" 2>/dev/null || true
+    cp target/release/bundle/nsis/*_${VERSION}_*.exe "$OUT/" 2>/dev/null || true
+    cp target/release/bundle/msi/*_${VERSION}_*.msi "$OUT/" 2>/dev/null || true
     SUMS="SHA256SUMS-windows.txt"
     ;;
 esac
