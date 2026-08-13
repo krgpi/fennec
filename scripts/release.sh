@@ -2,6 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# 各OSのビルドマシンで古いコードのまま成果物を作らないよう、必ず最新を取り込んでから始める
+git pull --ff-only
+
 VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
 OUT="dist-release"
 TAG="v${VERSION}"
