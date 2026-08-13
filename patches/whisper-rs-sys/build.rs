@@ -147,7 +147,9 @@ fn main() {
         let _: u64 = std::fs::copy("src/bindings.rs", out.join("bindings.rs"))
             .expect("Failed to copy bindings.rs");
     } else {
-        let mut bindings = bindgen::Builder::default().header("wrapper.h");
+        let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let mut bindings = bindgen::Builder::default()
+            .header(manifest_dir.join("wrapper.h").to_str().unwrap());
 
         #[cfg(feature = "metal")]
         {
