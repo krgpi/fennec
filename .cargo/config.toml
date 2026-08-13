@@ -2,4 +2,9 @@
 rustflags = ["-C", "relocation-model=dynamic-no-pic"]
 
 [target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=advapi32.lib", "-C", "link-arg=/NODEFAULTLIB:libcpmt.lib"]
+rustflags = [
+  "-C", "link-arg=advapi32.lib",
+  "-C", "target-feature=+crt-static",
+  "-C", "link-arg=libcpmt.lib",
+  "-C", "link-arg=libconcrt.lib",
+]
