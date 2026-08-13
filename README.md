@@ -80,9 +80,9 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 ### AppImage（推奨・全ディストロ対応）
 
 ```bash
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_2.0.0_amd64.AppImage
-chmod +x Fennec_2.0.0_amd64.AppImage
-./Fennec_2.0.0_amd64.AppImage
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.AppImage
+chmod +x Fennec_0.0.1_amd64.AppImage
+./Fennec_0.0.1_amd64.AppImage
 ```
 
 依存ライブラリ（sherpa-onnx、GTK等）を同梱しているため追加インストール不要。FUSE 2が必要（`sudo apt install libfuse2` / 多くのディストロにはプリインストール済み）。
@@ -90,8 +90,8 @@ chmod +x Fennec_2.0.0_amd64.AppImage
 ### Debian / Ubuntu (.deb)
 
 ```bash
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_2.0.0_amd64.deb
-sudo dpkg -i Fennec_2.0.0_amd64.deb
+curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.deb
+sudo dpkg -i Fennec_0.0.1_amd64.deb
 sudo apt-get install -f  # 不足する依存パッケージがあれば解決
 ```
 

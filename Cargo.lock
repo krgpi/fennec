@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-app"
-version = "2.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "block2",
@@ -1430,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-audio"
-version = "2.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "audiopus",
@@ -1447,7 +1447,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-cli"
-version = "2.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1458,7 +1458,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-core"
-version = "2.0.0"
+version = "0.0.1"
 dependencies = [
  "chrono",
  "regex",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-stt"
-version = "2.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
