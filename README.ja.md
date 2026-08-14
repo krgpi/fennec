@@ -33,37 +33,38 @@ macOS / Windows / Linux 向けのローカル文字起こし & AI議事録アプ
 
 ## インストール
 
+ビルド済みバイナリは各 [GitHub Release](https://github.com/krgpi/fennec/releases) に添付されています。現在のバージョンは `0.0.1` です。新しいバージョンが出たら以下のコマンドのバージョン部分を読み替えてください。
+
+まだコード署名をしていないため、どのプラットフォームでも初回起動時に警告が出ます。
+
 ### macOS — Homebrew
+
+Apple Silicon・macOS 26 (Tahoe) 以降が対象です。
 
 ```bash
 brew tap krgpi/tap
 brew install --cask fennec
 ```
 
-### Windows — winget
+リリースページから `Fennec_0.0.1_arm64.dmg` を直接ダウンロードしても構いません。
 
-```powershell
-winget install krgpi.Fennec
-```
+### Windows
+
+[リリースページ](https://github.com/krgpi/fennec/releases/tag/v0.0.1)から `Fennec_0.0.1_x64-setup.exe`（または `Fennec_0.0.1_x64_en-US.msi`）をダウンロードして実行します。x64 のみ。
 
 ### Linux
 
 ```bash
-# AppImage（全ディストロ対応・依存同梱・FUSE 2 が必要）
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.AppImage
-chmod +x Fennec_0.0.1_amd64.AppImage && ./Fennec_0.0.1_amd64.AppImage
-
 # Debian / Ubuntu
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.deb
+curl -LO https://github.com/krgpi/fennec/releases/download/v0.0.1/Fennec_0.0.1_amd64.deb
 sudo dpkg -i Fennec_0.0.1_amd64.deb && sudo apt-get install -f
 
-# Arch Linux
-yay -S fennec-bin
+# Fedora / RHEL
+curl -LO https://github.com/krgpi/fennec/releases/download/v0.0.1/Fennec-0.0.1-1.x86_64.rpm
+sudo dnf install ./Fennec-0.0.1-1.x86_64.rpm
 ```
 
 x86_64 のみ。システム音声のキャプチャに PipeWire が必要です。
-
-`.deb` / `.rpm` / `.exe` / `.dmg` は各 [GitHub Release](https://github.com/krgpi/fennec/releases) にも添付されています。
 
 ## 使い方
 
@@ -130,9 +131,9 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 1. `src-tauri/tauri.conf.json` / `package.json` / ルート `Cargo.toml` の `version` を上げ、`vX.Y.Z` タグを push して draft release を作る
 2. macOS / Windows / Linux それぞれのマシンで `scripts/release.sh` を実行し、同じ draft に成果物をアップロードする（タグは `tauri.conf.json` から導出。`--no-upload` を渡すとビルドのみ）（Swiftヘルパーが macOS 26 SDK を要求しCIランナーで作れないため、ビルドはローカルに揃えている）
 3. draft を publish する
-4. `.github/workflows/publish-packages.yml` を該当タグで手動実行し、winget と AUR を更新する
+4. `.github/workflows/publish-packages.yml` を該当タグで手動実行し、winget と AUR を更新する（どちらも初版を手動登録するまでは必ず失敗する）
 
-未対応: Windowsのコード署名、macOSの署名/notarization、Linux aarch64。
+未対応: Windowsのコード署名、macOSの署名/notarization、macOS x86_64、Linux aarch64、AppImage、winget / AUR パッケージ。
 
 ## ライセンス
 

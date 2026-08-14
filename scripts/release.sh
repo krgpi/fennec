@@ -38,7 +38,6 @@ Darwin)
     ;;
 Linux)
     cp target/release/bundle/deb/*_${VERSION}_*.deb "$OUT/" 2>/dev/null || true
-    cp target/release/bundle/appimage/*_${VERSION}_*.AppImage "$OUT/" 2>/dev/null || true
     cp target/release/bundle/rpm/*-${VERSION}-*.rpm "$OUT/" 2>/dev/null || true
     SUMS="SHA256SUMS-linux.txt"
     ;;

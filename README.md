@@ -33,37 +33,38 @@ Captures system audio and microphone input simultaneously, with real-time and po
 
 ## Install
 
+Every build is attached to a [GitHub Release](https://github.com/krgpi/fennec/releases). The current version is `0.0.1`; replace the version in the commands below when a newer one is out.
+
+Nothing is code-signed yet, so every platform shows an "unidentified developer" style warning on first launch.
+
 ### macOS — Homebrew
+
+Apple Silicon and macOS 26 (Tahoe) or later.
 
 ```bash
 brew tap krgpi/tap
 brew install --cask fennec
 ```
 
-### Windows — winget
+Or download `Fennec_0.0.1_arm64.dmg` from the release page.
 
-```powershell
-winget install krgpi.Fennec
-```
+### Windows
+
+Download and run `Fennec_0.0.1_x64-setup.exe` (or `Fennec_0.0.1_x64_en-US.msi`) from the [release page](https://github.com/krgpi/fennec/releases/tag/v0.0.1). x64 only.
 
 ### Linux
 
 ```bash
-# AppImage (works on any distro; bundles its dependencies, needs FUSE 2)
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.AppImage
-chmod +x Fennec_0.0.1_amd64.AppImage && ./Fennec_0.0.1_amd64.AppImage
-
 # Debian / Ubuntu
-curl -LO https://github.com/krgpi/fennec/releases/latest/download/Fennec_0.0.1_amd64.deb
+curl -LO https://github.com/krgpi/fennec/releases/download/v0.0.1/Fennec_0.0.1_amd64.deb
 sudo dpkg -i Fennec_0.0.1_amd64.deb && sudo apt-get install -f
 
-# Arch Linux
-yay -S fennec-bin
+# Fedora / RHEL
+curl -LO https://github.com/krgpi/fennec/releases/download/v0.0.1/Fennec-0.0.1-1.x86_64.rpm
+sudo dnf install ./Fennec-0.0.1-1.x86_64.rpm
 ```
 
 x86_64 only. PipeWire is required for system audio capture.
-
-`.deb` / `.rpm` / `.exe` / `.dmg` are also attached to each [GitHub Release](https://github.com/krgpi/fennec/releases).
 
 ## Usage
 
@@ -130,9 +131,9 @@ GitHub Releases is the source of truth; package managers pull from it.
 1. Bump `version` in `src-tauri/tauri.conf.json`, `package.json`, and the root `Cargo.toml`, push a `vX.Y.Z` tag, and create a draft release.
 2. Run `scripts/release.sh` on a macOS, Windows, and Linux machine, uploading each build to the same draft. (The tag is derived from `tauri.conf.json`; pass `--no-upload` to build without publishing.) (Builds are local — the Swift helper needs the macOS 26 SDK, which CI runners don't have.)
 3. Publish the draft.
-4. Run `.github/workflows/publish-packages.yml` manually against the tag to update winget and AUR.
+4. Run `.github/workflows/publish-packages.yml` manually against the tag to update winget and AUR. (Both need their first version registered by hand — until then this workflow fails.)
 
-Not yet supported: Windows code signing, macOS signing / notarization, Linux aarch64.
+Not yet supported: Windows code signing, macOS signing / notarization, macOS x86_64, Linux aarch64, AppImage, winget / AUR packages.
 
 ## License
 
