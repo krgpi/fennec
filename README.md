@@ -21,7 +21,7 @@ Captures system audio and microphone input simultaneously, with real-time and po
 
 ## Features
 
-- **Dual-stream capture** — System audio (their voice) + microphone (your voice), recorded together
+- **Dual-stream capture** — System audio (their voice) + microphone (your voice), recorded together. No virtual audio device (BlackHole, VB-CABLE) to install or route through
 - **Real-time transcription** — Live transcription with whisper.cpp (all platforms) or Apple Speech Recognition (macOS 26+)
 - **High-accuracy transcription** — Post-recording transcription with Whisper Small / Large V3 (Turbo) models
 - **AI meeting minutes** — Generate minutes via Claude Code / Codex / Gemini CLI, with context from previous meetings
