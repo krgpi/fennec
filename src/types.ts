@@ -37,6 +37,7 @@ export interface MinutesPreset {
   outputFolder?: string | null;
   backend: MinutesBackend;
   model: string;
+  customPrompt?: string | null;
   createdAt: string;
   lastUsedAt: string;
 }

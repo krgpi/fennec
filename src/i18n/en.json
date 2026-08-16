@@ -267,6 +267,8 @@
   "プリセットなし": "No preset",
   "コンテキスト": "Context",
   "出力先": "Output",
+  "追加の指示": "Extra instructions",
+  "議事録の書き方の指示を自由に入力（例: 決定事項を冒頭にまとめる）": "Free-form instructions for how to write the minutes (e.g. put decisions at the top)",
   "プリセットとして保存": "Save as preset",
   "未設定": "Not set",
   "選択...": "Choose...",

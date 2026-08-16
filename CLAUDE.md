@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Fennec の Tauri 実装（macOS / Windows / Linux）。macOS 専用 SwiftUI 版（隣の `../code`）と同じ機能・データ形式・CLI コマンド体系を持つ。ビルド手順は `README.md` を参照。
+Fennec の Tauri 実装（macOS / Windows / Linux）。元は macOS 専用の SwiftUI アプリで、コミット `11872c4` でこのリポジトリごと Tauri に置き換えた（Swift 実装はそれ以前の履歴にのみ存在する）。機能・データ形式・CLI コマンド体系は Swift 版と互換。ビルド手順は `README.md` を参照。
 
 ## Build
 
@@ -60,6 +60,6 @@ Swift 版から意図的に直した点: `engineType` が更新されないバ�
 
 ## Conventions
 
-- UI テキストは日本語がキー。`scripts/convert-xcstrings.mjs` が Swift 版の `Localizable.xcstrings` と `src/i18n/extra.json` をマージして `src/i18n/{ja,en}.json` を生成する。**新しい UI 文言を足したら `extra.json` に英訳を書いて再生成する**（`ja.json` / `en.json` は生成物なので直接編集しない）
+- UI テキストは日本語がキー。`src/i18n/{ja,en}.json` が唯一のソース（Swift 版の `Localizable.xcstrings` から変換していた名残でかつて生成物だったが、Swift 実装が無くなったので手で編集する）。**新しい UI 文言を足したら両ファイルに同じキーを追記する**（`ja.json` は日本語をそのまま、`en.json` に英訳）
 - テストは `fennec-core` に寄せる。OS やモデルに依存する部分は example（`cargo run -p fennec-stt --example diarize_test` など）で手動確認する
 - リアルタイム処理のコールバック（キャプチャの `on_chunk`）はオーディオスレッドから呼ばれる。重い処理を書かず、チャネルで別スレッドに渡す

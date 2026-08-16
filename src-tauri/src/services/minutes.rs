@@ -126,6 +126,7 @@ pub struct MinutesRequest {
     pub model: String,
     pub context_folder: Option<PathBuf>,
     pub output_folder: Option<PathBuf>,
+    pub custom_prompt: Option<String>,
 }
 
 pub struct MinutesOutcome {
@@ -154,6 +155,7 @@ pub fn generate(
         claude_md,
         existing_file_names,
         previous_minutes,
+        custom_prompt: req.custom_prompt.clone(),
     };
     let prompt = build_prompt(&req.transcript, &req.session_id, &ctx);
 

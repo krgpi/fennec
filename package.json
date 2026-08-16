@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
-    "convert-i18n": "node scripts/convert-xcstrings.mjs"
+    "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

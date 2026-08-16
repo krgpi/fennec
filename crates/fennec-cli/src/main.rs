@@ -44,6 +44,8 @@ enum Command {
         backend: Option<String>,
         #[arg(long)]
         model: Option<String>,
+        #[arg(long)]
+        prompt: Option<String>,
     },
     Preset {
         #[command(subcommand)]
@@ -102,6 +104,8 @@ enum PresetAction {
         backend: Option<String>,
         #[arg(long)]
         model: Option<String>,
+        #[arg(long)]
+        prompt: Option<String>,
     },
     Delete {
         name: String,
@@ -279,6 +283,7 @@ fn main() {
             preset,
             backend,
             model,
+            prompt,
         } => {
             let data = run_with_progress(
                 "minutes",
@@ -287,6 +292,7 @@ fn main() {
                     ("preset", preset.as_deref()),
                     ("backend", backend.as_deref()),
                     ("model", model.as_deref()),
+                    ("prompt", prompt.as_deref()),
                 ]),
             );
             println!("{}", data["outputFile"].as_str().unwrap_or("?"));
@@ -302,6 +308,7 @@ fn main() {
                 output,
                 backend,
                 model,
+                prompt,
             } => {
                 let data = run(
                     "preset.create",
@@ -311,6 +318,7 @@ fn main() {
                         ("output", output.as_deref()),
                         ("backend", backend.as_deref()),
                         ("model", model.as_deref()),
+                        ("prompt", prompt.as_deref()),
                     ]),
                 );
                 print_json(&data);

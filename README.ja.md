@@ -122,7 +122,7 @@ src/                 React + TypeScript + Tailwind + zustand
 sidecar/FennecHelper Swiftヘルパー（SpeechAnalyzer / FoundationModels / Translation、macOSのみ）
 ```
 
-OS差はクレート内で吸収し、`src-tauri` に `cfg` を漏らさない方針です。録音は WAV で書き、文字起こし後に Opus (`.ogg`) へ変換します。UI文言は日本語がキーで、`scripts/convert-xcstrings.mjs` が `src/i18n/{ja,en}.json` を生成します。
+OS差はクレート内で吸収し、`src-tauri` に `cfg` を漏らさない方針です。録音は WAV で書き、文字起こし後に Opus (`.ogg`) へ変換します。UI文言は日本語がキーで、`src/i18n/{ja,en}.json` を直接編集します（新しいキーは両方に追記）。
 
 ### リリース
 

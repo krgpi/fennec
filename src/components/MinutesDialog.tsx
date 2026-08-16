@@ -21,6 +21,7 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
   const [model, setModel] = useState("");
   const [contextFolder, setContextFolder] = useState<string | null>(null);
   const [outputFolder, setOutputFolder] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState("");
   const [saveAsPreset, setSaveAsPreset] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
     setModel(preset.model);
     setContextFolder(preset.contextFolder ?? null);
     setOutputFolder(preset.outputFolder ?? null);
+    setCustomPrompt(preset.customPrompt ?? "");
   };
 
   const pickFolder = async (set: (v: string | null) => void) => {
@@ -63,6 +65,7 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
 
   const generate = async () => {
     setError(null);
+    const prompt = customPrompt.trim() || null;
     let usedPresetId = presetId || null;
     if (saveAsPreset && settings) {
       const newPreset: MinutesPreset = {
@@ -72,6 +75,7 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
         outputFolder,
         backend,
         model,
+        customPrompt: prompt,
         createdAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
         lastUsedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
       };
@@ -85,6 +89,7 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
         model,
         contextFolder,
         outputFolder,
+        customPrompt: prompt,
         presetId: usedPresetId,
       });
       useJobs.getState().setMinutes({ running: true, sessionId, error: null });
@@ -183,6 +188,16 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
                 "生成した議事録をここに書き出します。以降アプリ内で編集した内容は、議事録タブから書き出すまで反映されません。",
               )}
             </p>
+
+            <div className="flex items-start gap-2">
+              <span className="w-28 pt-1 text-neutral-500">{t("追加の指示")}</span>
+              <textarea
+                className="flex-1 h-20 resize-none rounded border border-neutral-300 dark:border-neutral-600 bg-transparent px-2 py-1 text-xs"
+                placeholder={t("議事録の書き方の指示を自由に入力（例: 決定事項を冒頭にまとめる）")}
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+              />
+            </div>
 
             <label className="flex items-center gap-2">
               <input

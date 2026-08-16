@@ -107,6 +107,8 @@ pub struct MinutesPreset {
     pub output_folder: Option<PathBuf>,
     pub backend: MinutesBackend,
     pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_prompt: Option<String>,
     #[serde(with = "crate::session::iso8601")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "crate::session::iso8601")]
@@ -122,6 +124,7 @@ impl MinutesPreset {
             output_folder: None,
             backend,
             model: backend.default_model().to_string(),
+            custom_prompt: None,
             created_at: now,
             last_used_at: now,
         }
@@ -134,6 +137,7 @@ pub struct PromptContext {
     pub claude_md: Option<String>,
     pub existing_file_names: Vec<String>,
     pub previous_minutes: Option<String>,
+    pub custom_prompt: Option<String>,
 }
 
 pub fn build_prompt(transcript: &str, session_date: &str, ctx: &PromptContext) -> String {
@@ -155,6 +159,13 @@ pub fn build_prompt(transcript: &str, session_date: &str, ctx: &PromptContext) -
     let mut prompt = format!(
         "以下は会議の文字起こしです。これを元に議事録を作成してください。\n\n# 文字起こし\n{transcript}\n\n# 指示\n- **出力の1行目にファイル名のみを記述**（拡張子 .md 付き、それ以外のテキストは不要）\n- 2行目以降に Markdown 形式の議事録を出力\n- 参加者、議題、決定事項、アクションアイテムを整理{context_instruction}\n- 議事録のみを出力し、余計な説明は不要\n\n# ファイル名\n{file_name_instruction}\n日付情報: {session_date}"
     );
+
+    if let Some(custom) = ctx.custom_prompt.as_ref().filter(|s| !s.trim().is_empty()) {
+        prompt.push_str(&format!(
+            "\n\n# 追加の指示\n以下の指示を優先して議事録の内容やフォーマットを調整してください。\n\n{}",
+            custom.trim()
+        ));
+    }
 
     if let Some(claude_md) = &ctx.claude_md {
         prompt.push_str(&format!(
@@ -228,12 +239,37 @@ mod tests {
             claude_md: Some("指示内容".into()),
             existing_file_names: vec!["a.md".into(), "b.md".into()],
             previous_minutes: Some("前回内容".into()),
+            custom_prompt: None,
         };
         let prompt = build_prompt("T", "D", &ctx);
         assert!(prompt.contains("- 参加者、議題、決定事項、アクションアイテムを整理\n- コンテキストフォルダ内の関連ファイルも参考にしてよい\n"));
         assert!(prompt.contains("出力先フォルダの既存ファイル: a.md, b.md\n既存ファイルの命名規則に合わせてファイル名を決めてください。"));
         assert!(prompt.contains("# コンテキストフォルダの CLAUDE.md\n以下の指示に従って議事録のフォーマットや内容を調整してください。\n\n指示内容"));
         assert!(prompt.ends_with("# 前回の議事録\n以下は前回の議事録です。構成・フォーマット・見出し構造を踏襲し、内容の連続性（前回のアクションアイテムの進捗、継続議題など）を意識してください。\n\n前回内容"));
+    }
+
+    #[test]
+    fn prompt_with_custom_prompt() {
+        let ctx = PromptContext {
+            custom_prompt: Some("  箇条書きで簡潔に  ".into()),
+            ..PromptContext::default()
+        };
+        let prompt = build_prompt("T", "D", &ctx);
+        assert!(prompt.ends_with(
+            "# 追加の指示\n以下の指示を優先して議事録の内容やフォーマットを調整してください。\n\n箇条書きで簡潔に"
+        ));
+    }
+
+    #[test]
+    fn prompt_ignores_blank_custom_prompt() {
+        let ctx = PromptContext {
+            custom_prompt: Some("   ".into()),
+            ..PromptContext::default()
+        };
+        assert_eq!(
+            build_prompt("T", "D", &ctx),
+            build_prompt("T", "D", &PromptContext::default())
+        );
     }
 
     #[test]

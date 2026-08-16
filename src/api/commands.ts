@@ -57,6 +57,7 @@ export interface GenerateMinutesArgs {
   model: string;
   contextFolder?: string | null;
   outputFolder?: string | null;
+  customPrompt?: string | null;
   presetId?: string | null;
 }
 

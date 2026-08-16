@@ -141,6 +141,7 @@ fn dispatch(app: &AppHandle, request: &Request, progress: &mut ProgressSink) -> 
             arg("preset").as_deref(),
             arg("backend").as_deref(),
             arg("model").as_deref(),
+            arg("prompt").as_deref(),
             progress,
         ),
         "preset.list" => {
@@ -398,6 +399,9 @@ fn preset_dict(preset: &MinutesPreset) -> Value {
     if let Some(v) = &preset.output_folder {
         dict["outputFolder"] = json!(v.to_string_lossy());
     }
+    if let Some(v) = &preset.custom_prompt {
+        dict["customPrompt"] = json!(v);
+    }
     dict
 }
 
@@ -469,6 +473,7 @@ fn handle_preset_create(app: &AppHandle, args: &std::collections::HashMap<String
     if let Some(model) = args.get("model") {
         preset.model = model.clone();
     }
+    preset.custom_prompt = args.get("prompt").filter(|s| !s.trim().is_empty()).cloned();
     let dict = preset_dict(&preset);
 
     let state = app.state::<AppState>();
@@ -537,6 +542,7 @@ fn handle_minutes(
     preset_name: Option<&str>,
     backend: Option<&str>,
     model: Option<&str>,
+    custom_prompt: Option<&str>,
     progress: &mut ProgressSink,
 ) -> Response {
     let session = match resolve_session(app, session_id) {
@@ -591,6 +597,9 @@ fn handle_minutes(
         model,
         context_folder: preset.as_ref().and_then(|p| p.context_folder.clone()),
         output_folder: preset.as_ref().and_then(|p| p.output_folder.clone()),
+        custom_prompt: custom_prompt
+            .map(String::from)
+            .or_else(|| preset.as_ref().and_then(|p| p.custom_prompt.clone())),
     };
     let child_slot = Arc::new(std::sync::Mutex::new(None));
     let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));

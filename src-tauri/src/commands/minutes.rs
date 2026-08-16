@@ -69,6 +69,7 @@ pub struct GenerateMinutesArgs {
     pub model: String,
     pub context_folder: Option<PathBuf>,
     pub output_folder: Option<PathBuf>,
+    pub custom_prompt: Option<String>,
     pub preset_id: Option<Uuid>,
 }
 
@@ -119,6 +120,7 @@ pub fn generate_minutes(
         model: args.model,
         context_folder: args.context_folder,
         output_folder: args.output_folder,
+        custom_prompt: args.custom_prompt,
     };
 
     tauri::async_runtime::spawn_blocking(move || {

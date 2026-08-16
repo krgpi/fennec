@@ -122,7 +122,7 @@ src/                 React + TypeScript + Tailwind + zustand
 sidecar/FennecHelper Swift helper (SpeechAnalyzer / FoundationModels / Translation; macOS only)
 ```
 
-Platform differences are absorbed inside the crates — `src-tauri` stays free of `cfg`. Recording is written as WAV and converted to Opus (`.ogg`) after transcription. UI strings are keyed in Japanese; run `scripts/convert-xcstrings.mjs` to regenerate `src/i18n/{ja,en}.json`.
+Platform differences are absorbed inside the crates — `src-tauri` stays free of `cfg`. Recording is written as WAV and converted to Opus (`.ogg`) after transcription. UI strings are keyed in Japanese and live in `src/i18n/{ja,en}.json`; add new keys to both files.
 
 ### Release
 
