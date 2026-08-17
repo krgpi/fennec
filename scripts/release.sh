@@ -54,6 +54,14 @@ echo "release artifacts:"
 ls -la "$OUT"
 
 if [ "$SKIP_UPLOAD" != "--no-upload" ]; then
+    # 各OSのビルドマシンが並行して走るため、最初に到達した1台がドラフトを作る。
+    # 競合して create が失敗しても、他マシンが作った直後なら view で拾えるので続行する
+    if ! gh release view "$TAG" >/dev/null 2>&1; then
+        gh release create "$TAG" --draft --title "$TAG" --generate-notes --target "$(git rev-parse HEAD)" ||
+            gh release view "$TAG" >/dev/null
+        echo "created draft release $TAG"
+    fi
+
     gh release upload "$TAG" "$OUT"/* --clobber
     echo "uploaded to release $TAG"
 
