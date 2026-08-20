@@ -47,7 +47,9 @@ final class BatchTranscriber {
             throw HelperError("no analyzer audio format for locale \(locale.identifier)")
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
-        let (inputSequence, builder) = AsyncStream<AnalyzerInput>.makeStream()
+        let (inputSequence, builder) = AsyncStream<AnalyzerInput>.makeStream(
+            bufferingPolicy: .bufferingOldest(maxPendingBuffers)
+        )
         try await analyzer.start(inputSequence: inputSequence)
 
         let feedTask = Task {
@@ -73,6 +75,26 @@ final class BatchTranscriber {
 
         let segments = Self.buildSegments(from: rawResults, audioDuration: audioDuration)
         return Output(text: finalizedText, segments: segments)
+    }
+
+    private static let maxPendingBuffers = 24
+
+    @available(macOS 26.0, *)
+    private static func feed(_ buffer: AVAudioPCMBuffer, to builder: AsyncStream<AnalyzerInput>.Continuation) async -> Bool {
+        let input = AnalyzerInput(buffer: buffer)
+        while true {
+            switch builder.yield(input) {
+            case .enqueued:
+                return true
+            case .terminated:
+                return false
+            case .dropped:
+                // bufferingOldest なので溢れたのは今回の要素。解析が追いつくまで待って再投入する
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            @unknown default:
+                return false
+            }
+        }
     }
 
     private static func buildSegments(from results: [(text: String, range: CMTimeRange)], audioDuration: Double) -> [TimedSeg] {
@@ -133,7 +155,7 @@ final class BatchTranscriber {
                 sendBuffer = readBuffer
             }
 
-            builder.yield(AnalyzerInput(buffer: sendBuffer))
+            guard await feed(sendBuffer, to: builder) else { break }
 
             if audioDuration > 0 {
                 onProgress(min(Double(totalFramesRead) / Double(totalFrames), 0.99))
@@ -171,30 +193,38 @@ final class BatchTranscriber {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        }
 
         let (text, sfSegments, error): (String, [SFTranscriptionSegment], String?) = await withCheckedContinuation { cont in
             var resumed = false
-            var lastText = ""
             var lastSegments: [SFTranscriptionSegment] = []
             task = recognizer.recognitionTask(with: request) { result, error in
-                guard !resumed else { return }
-                if let result {
-                    lastText = result.bestTranscription.formattedString
-                    lastSegments = result.bestTranscription.segments
-                    if audioDuration > 0, let lastSeg = lastSegments.last {
-                        onProgress(min((lastSeg.timestamp + lastSeg.duration) / audioDuration, 0.99))
-                    }
-                    if result.isFinal {
+                autoreleasepool {
+                    guard !resumed else { return }
+                    if let result {
+                        let transcription = result.bestTranscription
+                        lastSegments = transcription.segments
+                        if audioDuration > 0, let lastSeg = lastSegments.last {
+                            onProgress(min((lastSeg.timestamp + lastSeg.duration) / audioDuration, 0.99))
+                        }
+                        if result.isFinal {
+                            resumed = true
+                            onProgress(1.0)
+                            // formattedString は文字起こし全体を組み立てるので確定時だけ呼ぶ
+                            cont.resume(returning: (transcription.formattedString, lastSegments, nil))
+                        }
+                    } else if let error {
                         resumed = true
-                        onProgress(1.0)
-                        cont.resume(returning: (lastText, lastSegments, nil))
+                        let text = joinSegmentTexts(lastSegments.map(\.substring))
+                        cont.resume(returning: (text, lastSegments, error.localizedDescription))
                     }
-                } else if let error {
-                    resumed = true
-                    cont.resume(returning: (lastText, lastSegments, error.localizedDescription))
                 }
             }
         }
+        task?.cancel()
+        task = nil
 
         if let error, text.isEmpty {
             throw HelperError("SFSpeechRecognizer failed: \(error)")

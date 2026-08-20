@@ -21,6 +21,10 @@ final class LiveSession {
     private var segmentStart: Double = 0
     private var segments: [TimedSeg] = []
     private var stopped = false
+    private var droppedChunks = 0
+
+    // 解析が実時間に追いつかないときに無制限に溜め込まないよう上限を設ける
+    private static let maxPendingBuffers = 256
 
     init(locale: Locale, sampleRate: Double, channels: Int, onPartial: @escaping (String) -> Void, onFinal: @escaping (TimedSeg) -> Void) throws {
         guard sampleRate > 0, channels > 0,
@@ -49,7 +53,9 @@ final class LiveSession {
             throw HelperError("no analyzer audio format for locale \(locale.identifier)")
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
-        let (inputSequence, builder) = AsyncStream<AnalyzerInput>.makeStream()
+        let (inputSequence, builder) = AsyncStream<AnalyzerInput>.makeStream(
+            bufferingPolicy: .bufferingOldest(Self.maxPendingBuffers)
+        )
         try await analyzer.start(inputSequence: inputSequence)
 
         let alreadyStopped: Bool = lock.withLock {
@@ -140,7 +146,13 @@ final class LiveSession {
             sendBuffer = out
         }
 
-        inputBuilder.yield(AnalyzerInput(buffer: sendBuffer))
+        // ライブは実時間で流れてくるので、溢れた分は捨てる（溜めても追いつけない）
+        if case .dropped = inputBuilder.yield(AnalyzerInput(buffer: sendBuffer)) {
+            droppedChunks += 1
+            if droppedChunks % 100 == 1 {
+                logErr("live analyzer backlog full, dropped \(droppedChunks) chunks so far")
+            }
+        }
         totalFrames += Int64(frameCount)
     }
 
