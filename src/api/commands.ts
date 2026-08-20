@@ -77,6 +77,8 @@ export const api = {
     invoke<MinutesDocument>("save_minutes", { sessionId, content }),
   exportMinutes: (sessionId: string, content: string, target: string) =>
     invoke<MinutesDocument>("export_minutes", { sessionId, content, target }),
+  exportSessionAudio: (sessionId: string, target: string) =>
+    invoke<void>("export_session_audio", { sessionId, target }),
   updateSummary: (sessionId: string, summary: string) =>
     invoke<void>("update_summary", { sessionId, summary }),
   deleteSession: (sessionId: string) => invoke<void>("delete_session", { sessionId }),

@@ -1,6 +1,7 @@
 mod decode;
 mod level;
 mod mic;
+mod mix;
 mod opus;
 mod player;
 mod traits;
@@ -20,7 +21,8 @@ pub use decode::{
     StreamDownmixResampler, WHISPER_SAMPLE_RATE,
 };
 pub use level::{rms, rms_to_level};
-pub use opus::{decode_ogg_opus, encode_wav_to_opus};
+pub use mix::{export_mixed_audio, mix_files_to_mono, mix_tracks};
+pub use opus::{decode_ogg_opus, encode_pcm_to_opus, encode_wav_to_opus};
 pub use player::{Player, PlayerStatus, MAX_TRACKS};
 pub use mic::{list_input_devices, MicCapture};
 pub use traits::{AudioFormat, CaptureSource, ChunkCallback, InputDevice};

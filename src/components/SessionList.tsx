@@ -1,4 +1,4 @@
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { confirm, save } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/commands";
@@ -6,7 +6,7 @@ import { useJobs } from "../stores/jobs";
 import { useRecording } from "../stores/recording";
 import { useSessions } from "../stores/sessions";
 import type { RecordingSession } from "../types";
-import { relativeDateLabel, sectionLabel } from "../utils/format";
+import { relativeDateLabel, sanitizeFileName, sectionLabel } from "../utils/format";
 import { revealFolderKey } from "../utils/platform";
 
 function groupSessions(sessions: RecordingSession[], lang: string) {
@@ -37,6 +37,7 @@ export default function SessionList() {
   const transcribe = useJobs((s) => s.transcribe);
   const lang = i18n.language;
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!menu) return;
@@ -55,6 +56,28 @@ export default function SessionList() {
       await api.startTranscription(id);
     } catch (e) {
       alert(String(e));
+    }
+  };
+
+  const exportAudio = async (id: string) => {
+    setMenu(null);
+    const session = sessions.find((s) => s.id === id);
+    const summary = session?.summary?.trim();
+    const target = await save({
+      defaultPath: `${summary ? sanitizeFileName(summary) : id}.ogg`,
+      filters: [
+        { name: "Opus", extensions: ["ogg"] },
+        { name: "WAV", extensions: ["wav"] },
+      ],
+    });
+    if (typeof target !== "string") return;
+    setExportingId(id);
+    try {
+      await api.exportSessionAudio(id, target);
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setExportingId(null);
     }
   };
 
@@ -86,6 +109,7 @@ export default function SessionList() {
           {group.items.map((s) => {
             const isRecording = recording.recording && recording.sessionId === s.id;
             const isTranscribing = transcribe.running && transcribe.sessionId === s.id;
+            const isExporting = exportingId === s.id;
             return (
               <button
                 key={s.id}
@@ -123,6 +147,8 @@ export default function SessionList() {
                     {transcribe.fraction != null &&
                       ` ${Math.round(transcribe.fraction * 100)}%`}
                   </div>
+                ) : isExporting ? (
+                  <div className="text-xs text-blue-500">{t("音声を書き出し中...")}</div>
                 ) : (
                   s.transcriptPreview && (
                     <div className="text-xs text-neutral-500 truncate">
@@ -141,13 +167,22 @@ export default function SessionList() {
           style={{ left: menu.x, top: menu.y }}
         >
           {menu.hasAudio && (
-            <button
-              className="w-full px-3 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
-              disabled={transcribe.running}
-              onClick={() => retranscribe(menu.sessionId)}
-            >
-              {t("再文字起こし")}
-            </button>
+            <>
+              <button
+                className="w-full px-3 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
+                disabled={transcribe.running}
+                onClick={() => retranscribe(menu.sessionId)}
+              >
+                {t("再文字起こし")}
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
+                disabled={exportingId != null}
+                onClick={() => exportAudio(menu.sessionId)}
+              >
+                {t("音声を書き出す...")}
+              </button>
+            </>
           )}
           <button
             className="w-full px-3 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700"

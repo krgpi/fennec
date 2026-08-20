@@ -56,6 +56,7 @@ pub fn run() {
             commands::sessions::read_minutes,
             commands::sessions::save_minutes,
             commands::sessions::export_minutes,
+            commands::sessions::export_session_audio,
             commands::sessions::update_summary,
             commands::sessions::delete_session,
             commands::sessions::reveal_session_folder,

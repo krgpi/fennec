@@ -237,6 +237,8 @@
   "開始時刻に通知": "Notify at start time",
   "除外リストから削除": "Remove from exclusion list",
   "音声ファイルと文字起こしデータがゴミ箱に移動されます。": "The audio files and transcript data will be moved to the Trash.",
+  "音声を書き出し中...": "Exporting audio...",
+  "音声を書き出す...": "Export audio...",
   "音声を録音するために使用します": "Used to record audio",
   "音声出力を追加できません": "Could not add audio output",
   "音声認識": "Speech Recognition",

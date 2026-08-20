@@ -176,6 +176,32 @@ pub fn update_summary(
     save_metadata(&folder, &metadata).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn export_session_audio(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    session_id: String,
+    target: PathBuf,
+) -> Result<(), String> {
+    let folder = session_folder(&app, &state, &session_id)?;
+    let metadata = load_metadata(&folder).ok_or("failed to read session.json")?;
+    let inputs: Vec<PathBuf> = [metadata.system_audio_file, metadata.mic_audio_file]
+        .into_iter()
+        .flatten()
+        .map(|name| folder.join(name))
+        .filter(|path| path.exists())
+        .collect();
+    if inputs.is_empty() {
+        return Err("書き出せる音声ファイルがありません".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let refs: Vec<&Path> = inputs.iter().map(PathBuf::as_path).collect();
+        fennec_audio::export_mixed_audio(&refs, &target).map_err(|e| format!("{e:#}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 // macOS既定のFinder経由(osascript)はオートメーション権限プロンプトでハングするためNSFileManagerを使う
 fn trash_delete(path: &std::path::Path) -> Result<(), String> {
     #[cfg(target_os = "macos")]

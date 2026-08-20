@@ -6,7 +6,7 @@ import { events } from "../api/events";
 import { useJobs } from "../stores/jobs";
 import { useSettings } from "../stores/settings";
 import type { RecordingSession } from "../types";
-import { formatSessionDate } from "../utils/format";
+import { formatSessionDate, sanitizeFileName } from "../utils/format";
 import { useDebouncedSave } from "../utils/useDebouncedSave";
 import MarkdownView from "./MarkdownView";
 import MinutesDialog from "./MinutesDialog";
@@ -14,10 +14,6 @@ import MinutesDialog from "./MinutesDialog";
 function joinPath(dir: string, name: string): string {
   const sep = dir.includes("\\") && !dir.includes("/") ? "\\" : "/";
   return dir.endsWith(sep) ? dir + name : dir + sep + name;
-}
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[/\\:]/g, "_").trim();
 }
 
 export default function MinutesView({ session }: { session: RecordingSession }) {

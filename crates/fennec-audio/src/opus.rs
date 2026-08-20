@@ -13,11 +13,21 @@ const PRE_SKIP: u16 = 312;
 
 pub fn encode_wav_to_opus(wav: &Path, out_ogg: &Path, bitrate_bps: i32) -> anyhow::Result<()> {
     let (samples, rate, channels) = read_wav(wav)?;
+    encode_pcm_to_opus(&samples, rate, channels, out_ogg, bitrate_bps)
+}
+
+pub fn encode_pcm_to_opus(
+    samples: &[f32],
+    rate: u32,
+    channels: u16,
+    out_ogg: &Path,
+    bitrate_bps: i32,
+) -> anyhow::Result<()> {
     let channels = channels.clamp(1, 2);
     let interleaved = if rate == OPUS_RATE {
-        samples
+        samples.to_vec()
     } else {
-        resample_interleaved(&samples, channels, rate, OPUS_RATE)
+        resample_interleaved(samples, channels, rate, OPUS_RATE)
     };
 
     let opus_channels = if channels == 1 {

@@ -41,3 +41,7 @@ export function sectionLabel(iso: string, lang: string): string {
     ? d.toLocaleDateString("en-US", { year: "numeric", month: "long" })
     : `${d.getFullYear()}年${d.getMonth() + 1}月`;
 }
+
+export function sanitizeFileName(name: string): string {
+  return name.replace(/[/\\:]/g, "_").trim();
+}
