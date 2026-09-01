@@ -1,0 +1,53 @@
+name: cla
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+# 署名記録は同一リポジトリの cla-signatures ブランチに置く(初回実行時に自動作成される)。
+# fork からのPRにもコメント・ステータスを書き込む必要があるため pull_request_target を使う。
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check CLA signature
+        if: (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
+        uses: contributor-assistant/github-action@v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-signatures: signatures/version1/cla.json
+          path-to-document: https://github.com/krgpi/fennec/blob/main/CLA.md
+          branch: cla-signatures
+          allowlist: krgpi,dependabot[bot],renovate[bot]
+          custom-notsigned-prcomment: |
+            Thanks for your pull request. Before it can be merged, please read and sign the [Contributor License Agreement](https://github.com/krgpi/fennec/blob/main/CLA.md).
+
+            To sign, reply to this thread with exactly:
+
+            ```
+            I have read the CLA Document and I hereby sign the CLA
+            ```
+
+            You only need to do this once — it covers all of your future contributions.
+
+            ---
+
+            プルリクエストありがとうございます。マージの前に[コントリビューターライセンス契約](https://github.com/krgpi/fennec/blob/main/CLA.md)をお読みいただき、署名をお願いします。
+
+            署名するには、このスレッドに以下をそのまま返信してください。
+
+            ```
+            I have read the CLA Document and I hereby sign the CLA
+            ```
+
+            署名は一度だけで、以降のすべてのコントリビューションに適用されます。
+          custom-allsigned-prcomment: All contributors have signed the CLA. ✅

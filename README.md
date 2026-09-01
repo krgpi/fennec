@@ -135,6 +135,10 @@ GitHub Releases is the source of truth; package managers pull from it.
 
 Not yet supported: Windows code signing, macOS signing / notarization, macOS x86_64, Linux aarch64, AppImage, winget / AUR packages.
 
+## Contributing
+
+Bug reports and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests require signing the [Contributor License Agreement](CLA.md).
+
 ## License
 
-MIT
+MIT © 2026 Yuki NOAKI ([@krgpi](https://github.com/krgpi)) — see [LICENSE](LICENSE).

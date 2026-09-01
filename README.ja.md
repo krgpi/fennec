@@ -135,6 +135,10 @@ GitHub Releases が配布物の正本で、そこから各パッケージマネ�
 
 未対応: Windowsのコード署名、macOSの署名/notarization、macOS x86_64、Linux aarch64、AppImage、winget / AUR パッケージ。
 
+## コントリビュート
+
+バグ報告・プルリクエストを歓迎します。[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) を参照してください。プルリクエストのマージには[コントリビューターライセンス契約](CLA.md)への署名が必要です。
+
 ## ライセンス
 
-MIT
+MIT © 2026 Yuki NOAKI ([@krgpi](https://github.com/krgpi)) — [LICENSE](LICENSE) を参照。
