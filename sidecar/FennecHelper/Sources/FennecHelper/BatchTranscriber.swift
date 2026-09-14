@@ -2,6 +2,44 @@ import AVFoundation
 import Foundation
 import Speech
 
+private final class ResumeGuard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+    var isResumed: Bool { lock.withLock { resumed } }
+    /// 呼び出し前に resumed だったかを返す（二重 resume 防止のため呼び出し側で使う）
+    func markResumed() -> Bool { lock.withLock { let already = resumed; resumed = true; return already } }
+}
+
+private final class ActivityTracker: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastActivityAt = Date()
+
+    func touch() {
+        lock.withLock { lastActivityAt = Date() }
+    }
+
+    func idleSeconds() -> TimeInterval {
+        lock.withLock { Date().timeIntervalSince(lastActivityAt) }
+    }
+}
+
+private final class SFRecognitionState: @unchecked Sendable {
+    let resumeGuard = ResumeGuard()
+    let activity = ActivityTracker()
+    private let lock = NSLock()
+    var lastSegments: [SFTranscriptionSegment] {
+        get { lock.withLock { _lastSegments } }
+        set { lock.withLock { _lastSegments = newValue } }
+    }
+    private var _lastSegments: [SFTranscriptionSegment] = []
+
+    var isResumed: Bool { resumeGuard.isResumed }
+
+    func touch() { activity.touch() }
+    func idleSeconds() -> TimeInterval { activity.idleSeconds() }
+    func markResumed() -> Bool { resumeGuard.markResumed() }
+}
+
 final class BatchTranscriber {
     struct Output {
         var text: String
@@ -22,14 +60,57 @@ final class BatchTranscriber {
         let asset = AVURLAsset(url: url)
         let audioDuration = (try? await asset.load(.duration).seconds) ?? 0
 
-        if #available(macOS 26.0, *) {
-            do {
-                return try await transcribeWithAnalyzer(url: url, audioDuration: audioDuration, onProgress: onProgress)
-            } catch {
-                logErr("SpeechAnalyzer batch failed (\(errorMessage(error))), falling back to SFSpeechRecognizer")
+        // ほぼ無音・無音区間が極端に長い音声では SpeechAnalyzer/SFSpeechRecognizer が
+        // 応答を返さないまま停止することがある。音声の長さでタイムアウトを決めると
+        // 長時間の無音音声ほど猶予が伸びて意味がなくなるため、進捗イベントの間隔
+        // （無応答時間）で判定する
+        let activity = ActivityTracker()
+        let trackedProgress: (Double) -> Void = { fraction in
+            activity.touch()
+            onProgress(fraction)
+        }
+        return try await withIdleTimeout(activity: activity, idleSeconds: 90) { [self] in
+            if #available(macOS 26.0, *) {
+                do {
+                    return try await transcribeWithAnalyzer(url: url, audioDuration: audioDuration, onProgress: trackedProgress)
+                } catch {
+                    logErr("SpeechAnalyzer batch failed (\(errorMessage(error))), falling back to SFSpeechRecognizer")
+                }
+            }
+            return try await transcribeWithSFSpeech(url: url, audioDuration: audioDuration, onProgress: trackedProgress)
+        }
+    }
+
+    /// operation が idleSeconds の間 activity への touch なしに応答しない場合に打ち切る。
+    /// 打ち切っても内部で止まったタスクは残り得るが、呼び出し元をブロックし続けないことを優先する
+    private func withIdleTimeout<T: Sendable>(activity: ActivityTracker, idleSeconds: TimeInterval, _ operation: @escaping @Sendable () async throws -> T) async throws -> T {
+        let guardBox = ResumeGuard()
+
+        return try await withCheckedThrowingContinuation { cont in
+            func finish(_ result: Result<T, Error>) {
+                guard !guardBox.markResumed() else { return }
+                cont.resume(with: result)
+            }
+
+            Task {
+                do {
+                    finish(.success(try await operation()))
+                } catch {
+                    finish(.failure(error))
+                }
+            }
+
+            Task {
+                while !guardBox.isResumed {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if guardBox.isResumed { return }
+                    if activity.idleSeconds() > idleSeconds {
+                        finish(.failure(HelperError("batch transcription stalled (no progress for \(Int(idleSeconds))s)")))
+                        return
+                    }
+                }
             }
         }
-        return try await transcribeWithSFSpeech(url: url, audioDuration: audioDuration, onProgress: onProgress)
     }
 
     @available(macOS 26.0, *)
@@ -48,7 +129,7 @@ final class BatchTranscriber {
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let (inputSequence, builder) = AsyncStream<AnalyzerInput>.makeStream(
-            bufferingPolicy: .bufferingOldest(maxPendingBuffers)
+            bufferingPolicy: .bufferingOldest(Self.maxPendingBuffers)
         )
         try await analyzer.start(inputSequence: inputSequence)
 
@@ -197,28 +278,46 @@ final class BatchTranscriber {
             request.requiresOnDeviceRecognition = true
         }
 
+        let state = SFRecognitionState()
         let (text, sfSegments, error): (String, [SFTranscriptionSegment], String?) = await withCheckedContinuation { cont in
-            var resumed = false
-            var lastSegments: [SFTranscriptionSegment] = []
+            func finish(_ result: (String, [SFTranscriptionSegment], String?)) {
+                let alreadyResumed = state.markResumed()
+                guard !alreadyResumed else { return }
+                cont.resume(returning: result)
+            }
+
             task = recognizer.recognitionTask(with: request) { result, error in
                 autoreleasepool {
-                    guard !resumed else { return }
+                    guard !state.isResumed else { return }
+                    state.touch()
                     if let result {
                         let transcription = result.bestTranscription
-                        lastSegments = transcription.segments
-                        if audioDuration > 0, let lastSeg = lastSegments.last {
+                        state.lastSegments = transcription.segments
+                        if audioDuration > 0, let lastSeg = transcription.segments.last {
                             onProgress(min((lastSeg.timestamp + lastSeg.duration) / audioDuration, 0.99))
                         }
                         if result.isFinal {
-                            resumed = true
                             onProgress(1.0)
                             // formattedString は文字起こし全体を組み立てるので確定時だけ呼ぶ
-                            cont.resume(returning: (transcription.formattedString, lastSegments, nil))
+                            finish((transcription.formattedString, transcription.segments, nil))
                         }
                     } else if let error {
-                        resumed = true
-                        let text = joinSegmentTexts(lastSegments.map(\.substring))
-                        cont.resume(returning: (text, lastSegments, error.localizedDescription))
+                        let text = joinSegmentTexts(state.lastSegments.map(\.substring))
+                        finish((text, state.lastSegments, error.localizedDescription))
+                    }
+                }
+            }
+
+            // 無音・無音区間が非常に長い録音では SFSpeechRecognizer の completion handler が
+            // 一度も呼ばれずに無応答のままになることがあるため、無応答が続いたら打ち切る
+            Task {
+                while !state.isResumed {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if state.isResumed { return }
+                    if state.idleSeconds() > 60 {
+                        let text = joinSegmentTexts(state.lastSegments.map(\.substring))
+                        finish((text, state.lastSegments, "timed out waiting for SFSpeechRecognizer"))
+                        return
                     }
                 }
             }

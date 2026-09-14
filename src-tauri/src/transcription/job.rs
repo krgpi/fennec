@@ -309,11 +309,18 @@ fn run_job(
         }
     };
 
-    let sys_segments = transcribe_lane(&sys_path, "system", 0.0)?;
+    // 片方のレーン（ほぼ無音・破損音声など）が失敗しても、もう片方の文字起こしは失わない
+    let sys_segments = transcribe_lane(&sys_path, "system", 0.0).unwrap_or_else(|e| {
+        log::warn!("system audio transcription failed: {e:#}");
+        Vec::new()
+    });
     if cancelled.load(Ordering::Relaxed) {
         anyhow::bail!("cancelled");
     }
-    let mic_segments = transcribe_lane(&mic_path, "mic", 0.5)?;
+    let mic_segments = transcribe_lane(&mic_path, "mic", 0.5).unwrap_or_else(|e| {
+        log::warn!("mic audio transcription failed: {e:#}");
+        Vec::new()
+    });
     if cancelled.load(Ordering::Relaxed) {
         anyhow::bail!("cancelled");
     }
@@ -346,10 +353,11 @@ fn run_job(
                         fraction: None,
                     },
                 );
+                let has_audio = |p: &PathBuf| p.metadata().map(|m| m.len() > 0).unwrap_or(false);
                 let audio = sys_path
                     .as_ref()
-                    .filter(|p| p.exists())
-                    .or(mic_path.as_ref().filter(|p| p.exists()));
+                    .filter(|p| has_audio(p))
+                    .or(mic_path.as_ref().filter(|p| has_audio(p)));
                 audio.and_then(|path| match fennec_stt::diarize_file(path, &models, None) {
                     Ok(segments) => Some(segments),
                     Err(e) => {
