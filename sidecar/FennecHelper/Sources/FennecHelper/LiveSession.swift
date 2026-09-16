@@ -82,10 +82,18 @@ final class LiveSession {
                 let text = String(result.text.characters)
                 if result.isFinal {
                     guard !text.isEmpty else { continue }
+                    // 直前 final から今までで敷き詰めると無音まで区間に含まれ、マージ時の mic エコー除去が
+                    // システム側と 100% 重なると判定して mic を捨ててしまう。実際の発話区間を使う
+                    let range = result.range
                     let segment: TimedSeg = lock.withLock {
-                        let now = Double(totalFrames) / sampleRate
-                        let seg = TimedSeg(text: text, start: segmentStart, end: now)
-                        segmentStart = now
+                        let seg: TimedSeg
+                        if range.start.isNumeric, range.duration.isNumeric, range.duration.seconds > 0 {
+                            let start = range.start.seconds
+                            seg = TimedSeg(text: text, start: start, end: start + range.duration.seconds)
+                        } else {
+                            seg = TimedSeg(text: text, start: segmentStart, end: Double(totalFrames) / sampleRate)
+                        }
+                        segmentStart = seg.end
                         segments.append(seg)
                         return seg
                     }
