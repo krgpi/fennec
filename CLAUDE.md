@@ -57,6 +57,7 @@ Swift 版から意図的に直した点: `engineType` が更新されないバ�
 - **cidre 0.19**: `core_audio` だけでは feature gate が足りずコンパイルできない。`at` / `av` / `cm` を併せて有効にする
 - **Swift ヘルパーの `batchTranscribe`**: AVAudioFile で読むため wav/m4a のみ。ogg/opus は呼び出し側で一時 wav に変換して渡している
 - **`tauri build` は externalBin（release ビルドの CLI）を `target/debug/fennec` にも上書きコピーする**。そのため CLI は debug / release 両方のソケットを順に試す実装にしてある
+- **`patches/whisper-rs-sys` の build.rs は whisper.cpp ソースをローカル同梱（`patches/whisper-rs-sys/whisper.cpp/`、なければ `~/.cargo/registry/src/*/whisper-rs-sys-0.13.1/whisper.cpp`）から探す**。`[patch.crates-io]` で完全上書きしているため元 crate が registry にフェッチされず、どちらも無い環境では `Could not find whisper.cpp sources in cargo registry` でビルドが失敗する。`curl -L https://crates.io/api/v1/crates/whisper-rs-sys/0.13.1/download | tar xz` して中の `whisper.cpp/` を `patches/whisper-rs-sys/whisper.cpp/` に置けば解決する（`.gitignore` 済みなのでリポジトリには含めない）
 
 ## Conventions
 

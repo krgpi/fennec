@@ -7,3 +7,4 @@ src-tauri/binaries/
 sidecar/FennecHelper/.build/
 *.log
 .DS_Store
+patches/whisper-rs-sys/whisper.cpp/
