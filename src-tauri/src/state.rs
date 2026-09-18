@@ -25,6 +25,7 @@ pub struct PlayerSession {
 pub struct AppState {
     pub settings: RwLock<Settings>,
     pub settings_path: PathBuf,
+    pub agents_config_path: PathBuf,
     pub recorder: Mutex<Option<RecordingController>>,
     pub transcribe_job: Mutex<Option<TranscribeJob>>,
     pub model_download: Mutex<Option<Arc<AtomicBool>>>,
@@ -42,6 +43,7 @@ impl AppState {
         Ok(Self {
             settings: RwLock::new(settings),
             settings_path,
+            agents_config_path: config_dir.join(fennec_core::agents::AGENTS_CONFIG_FILE_NAME),
             recorder: Mutex::new(None),
             transcribe_job: Mutex::new(None),
             model_download: Mutex::new(None),

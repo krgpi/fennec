@@ -309,5 +309,14 @@
   "話者{{n}}": "Speaker {{n}}",
   "有効": "Enabled",
   "フックを追加": "Add hook",
-  "コマンド (例: echo $FENNEC_SESSION_DIR >> ~/fennec.log)": "Command (e.g. echo $FENNEC_SESSION_DIR >> ~/fennec.log)"
+  "コマンド (例: echo $FENNEC_SESSION_DIR >> ~/fennec.log)": "Command (e.g. echo $FENNEC_SESSION_DIR >> ~/fennec.log)",
+  "議事録を生成できるエージェント CLI が見つかりません。Claude Code / Codex / Gemini CLI をインストールするか、設定の「議事録」タブで他のエージェントを追加してください。": "No agent CLI for generating minutes was found. Install Claude Code / Codex / Gemini CLI, or add another agent in Settings > Minutes.",
+  "モデル名（空欄でエージェントのデフォルト）": "Model name (leave empty for the agent default)",
+  "エージェント": "Agents",
+  "議事録の生成に使う CLI の一覧です。設定ファイルを編集すると、エージェントの追加・組み込み定義の上書き・無効化ができます。": "CLIs used to generate minutes. Edit the config file to add agents, override the built-in definitions, or disable them.",
+  "見つかりません": "not found",
+  "設定ファイルを開く": "Open config file",
+  "設定ファイルを作成": "Create config file",
+  "再読み込み": "Reload",
+  "引数テンプレートでは {prompt} {model} {modelArgs} {output} が使えます。promptVia を stdin にすると標準入力でプロンプトを渡し、outputVia を file にすると {output} のファイルから結果を読みます。": "Argument templates accept {prompt} {model} {modelArgs} {output}. Set promptVia to stdin to pass the prompt via standard input, and outputVia to file to read the result from the {output} file."
 }

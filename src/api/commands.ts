@@ -42,6 +42,15 @@ export interface BackendInfo {
   displayName: string;
   models: { id: string; name: string }[];
   defaultModel: string;
+  binary: string;
+  binaryPath: string | null;
+}
+
+export interface AgentsConfigInfo {
+  path: string;
+  exists: boolean;
+  error: string | null;
+  agents: BackendInfo[];
 }
 
 export interface MinutesDocument {
@@ -106,6 +115,10 @@ export const api = {
 
   listMinutesBackends: (refresh?: boolean) =>
     invoke<BackendInfo[]>("list_minutes_backends", { refresh }),
+  getAgentsConfig: (refresh?: boolean) =>
+    invoke<AgentsConfigInfo>("get_agents_config", { refresh }),
+  createAgentsConfig: () => invoke<AgentsConfigInfo>("create_agents_config"),
+  openAgentsConfig: () => invoke<void>("open_agents_config"),
   generateMinutes: (args: GenerateMinutesArgs) =>
     invoke<void>("generate_minutes", { args }),
   cancelMinutes: () => invoke<void>("cancel_minutes"),

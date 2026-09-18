@@ -112,7 +112,9 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
 
         {backends.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            {t("Claude Code / Codex / Gemini CLI が見つかりません。いずれかをインストールしてください。")}
+            {t(
+              "議事録を生成できるエージェント CLI が見つかりません。Claude Code / Codex / Gemini CLI をインストールするか、設定の「議事録」タブで他のエージェントを追加してください。",
+            )}
           </p>
         ) : (
           <div className="flex flex-col gap-3 text-sm">
@@ -158,17 +160,26 @@ export default function MinutesDialog({ sessionId, onClose }: Props) {
 
             <label className="flex items-center gap-2">
               <span className="w-28 text-neutral-500">{t("モデル")}</span>
-              <select
-                className="flex-1 rounded border border-neutral-300 dark:border-neutral-600 bg-transparent px-2 py-1"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {(current?.models ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+              {current && current.models.length > 0 ? (
+                <select
+                  className="flex-1 rounded border border-neutral-300 dark:border-neutral-600 bg-transparent px-2 py-1"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                >
+                  {current.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="flex-1 rounded border border-neutral-300 dark:border-neutral-600 bg-transparent px-2 py-1"
+                  placeholder={t("モデル名（空欄でエージェントのデフォルト）")}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                />
+              )}
             </label>
 
             <FolderRow

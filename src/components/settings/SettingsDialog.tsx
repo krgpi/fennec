@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "../../stores/settings";
 import AutomationTab from "./AutomationTab";
 import GeneralTab from "./GeneralTab";
+import MinutesTab from "./MinutesTab";
 import RecordingTab from "./RecordingTab";
 import TranscriptionTab from "./TranscriptionTab";
 
-type TabId = "general" | "recording" | "transcription" | "automation";
+type TabId = "general" | "recording" | "transcription" | "minutes" | "automation";
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     ["general", t("一般")],
     ["recording", t("settings.tab.recording")],
     ["transcription", t("文字起こし")],
+    ["minutes", t("議事録")],
     ["automation", t("オートメーション")],
   ];
 
@@ -61,6 +63,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           {tab === "general" && <GeneralTab />}
           {tab === "recording" && <RecordingTab />}
           {tab === "transcription" && <TranscriptionTab />}
+          {tab === "minutes" && <MinutesTab />}
           {tab === "automation" && <AutomationTab />}
         </div>
       </div>

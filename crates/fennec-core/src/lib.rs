@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod calendar;
 pub mod format;
 pub mod hooks;

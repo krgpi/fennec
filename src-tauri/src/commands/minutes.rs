@@ -3,8 +3,8 @@ use crate::services::hooks;
 use crate::services::minutes::{self, MinutesRequest};
 use crate::state::{AppState, MinutesJob};
 use chrono::Utc;
+use fennec_core::agents::{config_template, ModelChoice};
 use fennec_core::hooks::HookEvent;
-use fennec_core::minutes::MinutesBackend;
 use fennec_core::session::load_metadata;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -25,47 +25,89 @@ pub struct MinutesDone {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BackendInfo {
-    pub backend: MinutesBackend,
+    pub backend: String,
     pub display_name: String,
     pub models: Vec<ModelChoice>,
     pub default_model: String,
+    pub binary: String,
+    pub binary_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ModelChoice {
-    pub id: String,
-    pub name: String,
+pub struct AgentsConfigInfo {
+    pub path: String,
+    pub exists: bool,
+    pub error: Option<String>,
+    pub agents: Vec<BackendInfo>,
 }
 
+fn agents_config_info(state: &AppState) -> AgentsConfigInfo {
+    let path = &state.agents_config_path;
+    let (defs, error) = minutes::load_agent_definitions(path);
+    AgentsConfigInfo {
+        path: path.to_string_lossy().into_owned(),
+        exists: path.is_file(),
+        error,
+        agents: defs
+            .iter()
+            .map(|a| BackendInfo {
+                backend: a.id.clone(),
+                display_name: a.display_name().to_string(),
+                models: a.models.clone(),
+                default_model: a.default_model.clone(),
+                binary: a.binary_name().to_string(),
+                binary_path: minutes::find_cli(a).map(|p| p.to_string_lossy().into_owned()),
+            })
+            .collect(),
+    }
+}
+
+/// 組み込み + agents.json のうち CLI が見つかったものだけを返す（議事録ダイアログ用）。
 #[tauri::command]
-pub fn list_minutes_backends(refresh: Option<bool>) -> Vec<BackendInfo> {
+pub fn list_minutes_backends(state: State<'_, AppState>, refresh: Option<bool>) -> Vec<BackendInfo> {
     if refresh.unwrap_or(false) {
         minutes::refresh_cli_cache();
     }
-    minutes::available_backends()
+    agents_config_info(&state)
+        .agents
         .into_iter()
-        .map(|b| BackendInfo {
-            backend: b,
-            display_name: b.display_name().to_string(),
-            models: b
-                .available_models()
-                .into_iter()
-                .map(|(id, name)| ModelChoice {
-                    id: id.to_string(),
-                    name: name.to_string(),
-                })
-                .collect(),
-            default_model: b.default_model().to_string(),
-        })
+        .filter(|a| a.binary_path.is_some())
         .collect()
+}
+
+/// 設定画面用。CLI の有無に関わらず全定義と設定ファイルの状態を返す。
+#[tauri::command]
+pub fn get_agents_config(state: State<'_, AppState>, refresh: Option<bool>) -> AgentsConfigInfo {
+    if refresh.unwrap_or(false) {
+        minutes::refresh_cli_cache();
+    }
+    agents_config_info(&state)
+}
+
+#[tauri::command]
+pub fn create_agents_config(state: State<'_, AppState>) -> Result<AgentsConfigInfo, String> {
+    let path = &state.agents_config_path;
+    if !path.exists() {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(path, config_template()).map_err(|e| e.to_string())?;
+    }
+    Ok(agents_config_info(&state))
+}
+
+#[tauri::command]
+pub fn open_agents_config(state: State<'_, AppState>) -> Result<(), String> {
+    tauri_plugin_opener::open_path(&state.agents_config_path, None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateMinutesArgs {
     pub session_id: String,
-    pub backend: MinutesBackend,
+    pub backend: String,
     pub model: String,
     pub context_folder: Option<PathBuf>,
     pub output_folder: Option<PathBuf>,
@@ -85,6 +127,9 @@ pub fn generate_minutes(
             return Err("議事録を生成中です".into());
         }
     }
+
+    let agent = minutes::find_agent(&state.agents_config_path, &args.backend)
+        .ok_or_else(|| format!("unknown backend: {}", args.backend))?;
 
     let folder = state.save_directory(&app).join(&args.session_id);
     let metadata = load_metadata(&folder).ok_or("session not found")?;
@@ -116,7 +161,7 @@ pub fn generate_minutes(
         session_id: args.session_id.clone(),
         session_folder: folder.clone(),
         transcript,
-        backend: args.backend,
+        agent,
         model: args.model,
         context_folder: args.context_folder,
         output_folder: args.output_folder,

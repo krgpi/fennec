@@ -28,7 +28,7 @@ export interface RecordingSession {
   hasTranscript: boolean;
 }
 
-export type MinutesBackend = "claude" | "codex" | "gemini";
+export type MinutesBackend = string;
 
 export interface MinutesPreset {
   id: string;

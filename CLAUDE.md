@@ -37,6 +37,7 @@ sidecar/FennecHelper Swift ヘルパー（macOS のみ、sidecar として同梱
 - **文字起こしエンジンは 2 系統**。whisper.cpp（全 OS）と Apple 音声認識（macOS のみ、ライブ / バッチとも選択可）。設定 `liveTranscriptionEngine` / `autoTranscribeEngine` で切り替え、Apple が使えなければ whisper にフォールバックする
 - **Swift 専用 API は Swift ヘルパーに隔離する**。SpeechAnalyzer / FoundationModels / Translation は Rust から呼べないため、stdin/stdout の JSON-line プロトコルで別プロセス化している（`crates/fennec-stt/src/apple.rs` がクライアント）。Windows/Linux ビルドでは `tauri.macos.conf.json` ごと読まれないので自然に外れる
 - **録音は WAV で書き、文字起こし後に Opus (.ogg) へ変換する**。Rust にクロスプラットフォームな AAC エンコーダがないため。既存 `.m4a` は symphonia で読めるので再生・再文字起こしは可能
+- **議事録エージェントは `fennec-core::agents::AgentDefinition` で表現し、組み込み（claude / codex / gemini）に `<app_config_dir>/agents.json` をマージする**。CLI 固有の引数はテンプレート（`{prompt}` `{model}` `{modelArgs}` `{output}`）で書き、Rust 側に個別分岐を増やさない。プリセットや IPC の `backend` はこの `id` 文字列
 - **議事録はセッションフォルダが正**。アプリ内で編集でき、任意の場所へ「書き出す」と `minutesExportedAt/Path/Hash` を記録して差分を検出する（Swift 版にはない拡張。未知キーは無視されるので互換は保たれる）
 
 ## 既存アプリとの互換（壊さないこと）

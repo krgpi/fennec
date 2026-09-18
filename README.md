@@ -72,7 +72,7 @@ x86_64 only. PipeWire is required for system audio capture.
 2. Download a Whisper model from Settings (Small is a good default; Large V3 Turbo for accuracy).
 3. Press **Record**. Live transcription appears as you speak; recording continues in the background from the tray.
 4. Stop recording — the full transcript is generated automatically and saved next to the audio.
-5. Open **Minutes**, pick a preset and backend (Claude Code / Codex / Gemini CLI), and generate. Edit in-app, then **Export** to write the minutes anywhere you like.
+5. Open **Minutes**, pick a preset and agent (Claude Code / Codex / Gemini CLI are built in; add others via `agents.json` below), and generate. Edit in-app, then **Export** to write the minutes anywhere you like.
 
 Each session is a folder under your recordings directory:
 
@@ -83,6 +83,40 @@ Each session is a folder under your recordings directory:
   minutes.md                the canonical minutes
   session.json              metadata
 ```
+
+### Adding minutes agents (agents.json)
+
+Settings > Minutes > **Create config file** writes `agents.json` into the app's config folder. It lists the three built-in agents as-is, so you can change their model lists, hide one with `disabled: true`, or append another CLI. An entry with the same `id` overrides the built-in definition.
+
+```json
+{
+  "agents": [
+    {
+      "id": "opencode",
+      "displayName": "OpenCode",
+      "binary": "opencode",
+      "args": ["run", "{modelArgs}", "{prompt}"],
+      "modelArgs": ["--model", "{model}"],
+      "promptVia": "arg",
+      "outputVia": "stdout",
+      "models": [{ "id": "anthropic/claude-sonnet-4", "name": "Sonnet 4" }],
+      "defaultModel": "anthropic/claude-sonnet-4",
+      "env": {}
+    }
+  ]
+}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `binary` | Executable name (searched in PATH, `~/.local/bin`, etc.) or an absolute path. Defaults to `id` |
+| `args` | Argument template. `{prompt}` `{model}` `{output}` are substituted; `{modelArgs}` disappears entirely when no model is set |
+| `promptVia` | `arg` (default) or `stdin`. With `stdin`, omit `{prompt}` and the prompt is piped in |
+| `outputVia` | `stdout` (default) or `file`. With `file`, the result is read from the temp file passed as `{output}` |
+| `models` | Choices shown in the dialog. Leave empty for a free-text model field |
+| `env` | Extra environment variables (API keys, etc.) |
+
+The prompt asks for a file name on the first line and Markdown from the second line on, so any CLI that prints plain text works.
 
 ### CLI
 

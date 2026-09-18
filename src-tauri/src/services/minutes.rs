@@ -1,9 +1,9 @@
 use crate::services::shell_env::{shell_command, shell_environment};
 use anyhow::Context;
 use chrono::Utc;
+use fennec_core::agents::{load_agents, AgentDefinition};
 use fennec_core::minutes::{
-    build_prompt, content_hash, default_minutes_file_name, extract_file_name, MinutesBackend,
-    PromptContext,
+    build_prompt, content_hash, default_minutes_file_name, extract_file_name, PromptContext,
 };
 use fennec_core::session::{load_metadata, save_metadata};
 use std::collections::HashMap;
@@ -13,8 +13,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-fn cli_cache() -> &'static Mutex<HashMap<MinutesBackend, Option<PathBuf>>> {
-    static CACHE: OnceLock<Mutex<HashMap<MinutesBackend, Option<PathBuf>>>> = OnceLock::new();
+fn cli_cache() -> &'static Mutex<HashMap<String, Option<PathBuf>>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, Option<PathBuf>>>> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -22,22 +22,34 @@ pub fn refresh_cli_cache() {
     cli_cache().lock().unwrap().clear();
 }
 
-pub fn find_cli(backend: MinutesBackend) -> Option<PathBuf> {
-    if let Some(Some(cached)) = cli_cache().lock().unwrap().get(&backend) {
+pub fn find_cli(agent: &AgentDefinition) -> Option<PathBuf> {
+    let name = agent.binary_name();
+    if let Some(Some(cached)) = cli_cache().lock().unwrap().get(name) {
         if is_executable(cached) {
             return Some(cached.clone());
         }
     }
-    let path = find_binary(backend.binary_name());
-    cli_cache().lock().unwrap().insert(backend, path.clone());
+    let path = find_binary(name);
+    cli_cache().lock().unwrap().insert(name.to_string(), path.clone());
     path
 }
 
-pub fn available_backends() -> Vec<MinutesBackend> {
-    MinutesBackend::ALL
+/// agents.json を読み、組み込み定義とマージした一覧を返す。壊れていれば組み込みのみで続行しエラー文言を添える。
+pub fn load_agent_definitions(config_path: &Path) -> (Vec<AgentDefinition>, Option<String>) {
+    match load_agents(config_path) {
+        Ok(agents) => (agents, None),
+        Err(e) => {
+            log::error!("failed to load agents config: {e}");
+            (AgentDefinition::builtin(), Some(e))
+        }
+    }
+}
+
+pub fn find_agent(config_path: &Path, id: &str) -> Option<AgentDefinition> {
+    load_agent_definitions(config_path)
+        .0
         .into_iter()
-        .filter(|b| find_cli(*b).is_some())
-        .collect()
+        .find(|a| a.id == id)
 }
 
 #[cfg(unix)]
@@ -55,6 +67,14 @@ fn is_executable(path: &Path) -> bool {
 
 fn find_binary(name: &str) -> Option<PathBuf> {
     let home = dirs_home();
+
+    if name.contains('/') || name.contains('\\') {
+        let expanded = name
+            .strip_prefix("~/")
+            .map(|rest| home.join(rest))
+            .unwrap_or_else(|| PathBuf::from(name));
+        return is_executable(&expanded).then_some(expanded);
+    }
 
     #[cfg(unix)]
     let search_dirs = vec![
@@ -124,7 +144,7 @@ pub struct MinutesRequest {
     pub session_id: String,
     pub session_folder: PathBuf,
     pub transcript: String,
-    pub backend: MinutesBackend,
+    pub agent: AgentDefinition,
     pub model: String,
     pub context_folder: Option<PathBuf>,
     pub output_folder: Option<PathBuf>,
@@ -141,8 +161,9 @@ pub fn generate(
     child_slot: Arc<Mutex<Option<Child>>>,
     cancelled: Arc<AtomicBool>,
 ) -> anyhow::Result<MinutesOutcome> {
-    let cli = find_cli(req.backend)
-        .ok_or_else(|| anyhow::anyhow!("{} CLI が見つかりません", req.backend.display_name()))?;
+    let agent = &req.agent;
+    let cli = find_cli(agent)
+        .ok_or_else(|| anyhow::anyhow!("{} CLI が見つかりません", agent.display_name()))?;
 
     let claude_md = req.context_folder.as_deref().and_then(load_claude_md);
     let existing_file_names = req
@@ -161,13 +182,11 @@ pub fn generate(
     };
     let prompt = build_prompt(&req.transcript, &req.session_id, &ctx);
 
-    let codex_output_file = req.backend.uses_stdin_prompt().then(|| {
-        std::env::temp_dir().join(format!("codex_minutes_{}.md", uuid::Uuid::new_v4()))
+    let agent_output_file = agent.uses_output_file().then(|| {
+        std::env::temp_dir().join(format!("{}_minutes_{}.md", agent.id, uuid::Uuid::new_v4()))
     });
 
-    let args = req
-        .backend
-        .build_arguments(&req.model, &prompt, codex_output_file.as_deref());
+    let args = agent.build_arguments(&req.model, &prompt, agent_output_file.as_deref());
 
     let mut cmd = Command::new(&cli);
     cmd.args(&args);
@@ -179,9 +198,10 @@ pub fn generate(
     );
     cmd.env_clear();
     cmd.envs(shell_environment());
+    cmd.envs(&agent.env);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
-    if req.backend.uses_stdin_prompt() {
+    if agent.uses_stdin_prompt() {
         cmd.stdin(Stdio::piped());
     }
 
@@ -189,7 +209,7 @@ pub fn generate(
         .spawn()
         .with_context(|| format!("CLI の起動に失敗しました: {}", cli.display()))?;
 
-    if req.backend.uses_stdin_prompt() {
+    if agent.uses_stdin_prompt() {
         if let Some(mut stdin) = child.stdin.take() {
             use std::io::Write;
             let _ = stdin.write_all(prompt.as_bytes());
@@ -220,7 +240,7 @@ pub fn generate(
     };
 
     let mut output = stdout_text;
-    if let Some(tmp) = &codex_output_file {
+    if let Some(tmp) = &agent_output_file {
         if let Ok(content) = std::fs::read_to_string(tmp) {
             if !content.is_empty() {
                 output = content;

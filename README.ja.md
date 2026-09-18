@@ -72,7 +72,7 @@ x86_64 のみ。システム音声のキャプチャに PipeWire が必要です
 2. 設定画面から Whisper モデルをダウンロードする（まずは Small、精度重視なら Large V3 Turbo）
 3. **録音**を開始する。話すそばからライブ文字起こしが流れ、トレイに入れてもバックグラウンドで録音が続く
 4. 録音を停止すると全体の文字起こしが自動生成され、音声と同じフォルダに保存される
-5. **議事録**タブでプリセットとバックエンド（Claude Code / Codex / Gemini CLI）を選んで生成する。アプリ内で編集し、**書き出し**で任意の場所へ出力できる
+5. **議事録**タブでプリセットとエージェント（Claude Code / Codex / Gemini CLI が組み込み。他は下記 `agents.json` で追加）を選んで生成する。アプリ内で編集し、**書き出し**で任意の場所へ出力できる
 
 セッションは録音フォルダ配下の1フォルダにまとまります。
 
@@ -83,6 +83,40 @@ x86_64 のみ。システム音声のキャプチャに PipeWire が必要です
   minutes.md                議事録の正本
   session.json              メタデータ
 ```
+
+### 議事録エージェントの追加（agents.json）
+
+設定 > 議事録 > **設定ファイルを作成** で、アプリの設定フォルダに `agents.json` が生成されます。組み込み 3 種がそのまま並ぶので、モデル一覧を変えたり `disabled: true` で隠したり、末尾に別の CLI を足せます。同じ `id` は組み込み定義を上書きします。
+
+```json
+{
+  "agents": [
+    {
+      "id": "opencode",
+      "displayName": "OpenCode",
+      "binary": "opencode",
+      "args": ["run", "{modelArgs}", "{prompt}"],
+      "modelArgs": ["--model", "{model}"],
+      "promptVia": "arg",
+      "outputVia": "stdout",
+      "models": [{ "id": "anthropic/claude-sonnet-4", "name": "Sonnet 4" }],
+      "defaultModel": "anthropic/claude-sonnet-4",
+      "env": {}
+    }
+  ]
+}
+```
+
+| キー | 意味 |
+| --- | --- |
+| `binary` | 実行ファイル名（PATH と `~/.local/bin` などを探索）か絶対パス。省略時は `id` |
+| `args` | 引数テンプレート。`{prompt}` `{model}` `{output}` を置換し、`{modelArgs}` はモデル指定が空のとき丸ごと消える |
+| `promptVia` | `arg`（既定）または `stdin`。`stdin` なら `{prompt}` を書かず標準入力で渡す |
+| `outputVia` | `stdout`（既定）または `file`。`file` なら `{output}` の一時ファイルから結果を読む |
+| `models` | 選択肢。空ならダイアログが自由入力になる |
+| `env` | 追加の環境変数（API キーなど） |
+
+出力の 1 行目にファイル名、2 行目以降に Markdown を返すプロンプトを渡すので、テキストを素直に出力する CLI なら何でも使えます。
 
 ### CLI
 

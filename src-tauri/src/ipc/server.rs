@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use fennec_core::ipc::{Progress, Request, Response};
-use fennec_core::minutes::{MinutesBackend, MinutesPreset};
+use fennec_core::minutes::MinutesPreset;
 use fennec_core::models::{whisper_model, WHISPER_MODELS};
 use fennec_core::session::{scan_sessions, RecordingSession};
 use interprocess::local_socket::{prelude::*, GenericFilePath, ListenerOptions, Stream};
@@ -452,12 +452,11 @@ fn handle_preset_create(app: &AppHandle, args: &std::collections::HashMap<String
     let Some(name) = args.get("name").filter(|s| !s.is_empty()) else {
         return Response::err("name is required");
     };
-    let backend = match args.get("backend") {
-        Some(raw) => match MinutesBackend::from_str_arg(raw) {
-            Some(b) => b,
-            None => return Response::err(format!("unknown backend: {raw}")),
-        },
-        None => MinutesBackend::Claude,
+    let state = app.state::<AppState>();
+    let backend_id = args.get("backend").map(String::as_str).unwrap_or("claude");
+    let Some(agent) = crate::services::minutes::find_agent(&state.agents_config_path, backend_id)
+    else {
+        return Response::err(format!("unknown backend: {backend_id}"));
     };
     let context = args.get("context").map(PathBuf::from);
     let output = args.get("output").map(PathBuf::from);
@@ -467,7 +466,7 @@ fn handle_preset_create(app: &AppHandle, args: &std::collections::HashMap<String
         }
     }
 
-    let mut preset = MinutesPreset::new(name.clone(), backend, chrono::Utc::now());
+    let mut preset = MinutesPreset::new(name.clone(), &agent, chrono::Utc::now());
     preset.context_folder = context;
     preset.output_folder = output;
     if let Some(model) = args.get("model") {
@@ -476,7 +475,6 @@ fn handle_preset_create(app: &AppHandle, args: &std::collections::HashMap<String
     preset.custom_prompt = args.get("prompt").filter(|s| !s.trim().is_empty()).cloned();
     let dict = preset_dict(&preset);
 
-    let state = app.state::<AppState>();
     {
         let mut settings = state.settings.write().unwrap();
         settings.minutes_presets.retain(|p| p.name != preset.name);
@@ -569,17 +567,18 @@ fn handle_minutes(
         None => None,
     };
 
-    let backend = match backend {
-        Some(raw) => match MinutesBackend::from_str_arg(raw) {
-            Some(b) => b,
-            None => return Response::err(format!("unknown backend: {raw}")),
-        },
-        None => preset.as_ref().map(|p| p.backend).unwrap_or(MinutesBackend::Claude),
+    let backend_id = backend
+        .map(String::from)
+        .or_else(|| preset.as_ref().map(|p| p.backend.clone()))
+        .unwrap_or_else(|| "claude".to_string());
+    let Some(agent) = crate::services::minutes::find_agent(&state.agents_config_path, &backend_id)
+    else {
+        return Response::err(format!("unknown backend: {backend_id}"));
     };
     let model = model
         .map(String::from)
         .or_else(|| preset.as_ref().map(|p| p.model.clone()))
-        .unwrap_or_else(|| backend.default_model().to_string());
+        .unwrap_or_else(|| agent.default_model.clone());
 
     {
         let job = state.minutes_job.lock().unwrap();
@@ -593,7 +592,7 @@ fn handle_minutes(
         session_id: session.id.clone(),
         session_folder: session.folder_path.clone(),
         transcript,
-        backend,
+        agent,
         model,
         context_folder: preset.as_ref().and_then(|p| p.context_folder.clone()),
         output_folder: preset.as_ref().and_then(|p| p.output_folder.clone()),
