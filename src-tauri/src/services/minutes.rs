@@ -23,8 +23,10 @@ pub fn refresh_cli_cache() {
 }
 
 pub fn find_cli(backend: MinutesBackend) -> Option<PathBuf> {
-    if let Some(cached) = cli_cache().lock().unwrap().get(&backend) {
-        return cached.clone();
+    if let Some(Some(cached)) = cli_cache().lock().unwrap().get(&backend) {
+        if is_executable(cached) {
+            return Some(cached.clone());
+        }
     }
     let path = find_binary(backend.binary_name());
     cli_cache().lock().unwrap().insert(backend, path.clone());
