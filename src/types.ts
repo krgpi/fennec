@@ -72,6 +72,7 @@ export interface Settings {
   diarizationEnabled: boolean;
   silenceAutoStopEnabled: boolean;
   silenceAutoStopMinutes: number;
+  prerollEnabled: boolean;
   meetingReminderEnabled: boolean;
   meetingReminderMinutesBefore: number;
   meetingReminderRequireMeetingUrl: boolean;

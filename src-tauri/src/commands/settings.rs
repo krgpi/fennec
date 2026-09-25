@@ -29,6 +29,13 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, settings: Set
     if old.hide_from_dock != settings.hide_from_dock {
         crate::window::apply_dock_policy(&app);
     }
+
+    if old.preroll_enabled != settings.preroll_enabled
+        || old.effective_mic_device_id() != settings.effective_mic_device_id()
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || crate::recording::preroll::sync(&app));
+    }
 }
 
 pub fn sync_autostart(app: &AppHandle, enabled: bool) {
