@@ -168,7 +168,7 @@ fn finish_stop(
     locale: Option<String>,
 ) {
     let stopped = controller.stop(&app);
-    crate::recording::preroll::sync(&app);
+    crate::recording::preroll::request_sync(&app);
     let outcome = match stopped {
         Ok(o) => o,
         Err(e) => {

@@ -44,10 +44,7 @@ pub fn run() {
             }
             window::setup(app.handle());
             calendar::monitor::start(app.handle().clone());
-            {
-                let app = app.handle().clone();
-                tauri::async_runtime::spawn_blocking(move || recording::preroll::sync(&app));
-            }
+            recording::preroll::request_sync(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

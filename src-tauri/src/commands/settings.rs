@@ -33,8 +33,7 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, settings: Set
     if old.preroll_enabled != settings.preroll_enabled
         || old.effective_mic_device_id() != settings.effective_mic_device_id()
     {
-        let app = app.clone();
-        tauri::async_runtime::spawn_blocking(move || crate::recording::preroll::sync(&app));
+        crate::recording::preroll::request_sync(&app);
     }
 }
 

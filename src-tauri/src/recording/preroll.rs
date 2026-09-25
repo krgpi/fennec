@@ -156,7 +156,15 @@ pub fn attach(lanes: &[(Tap, AudioFormat, mpsc::Sender<LaneChunk>)]) -> f64 {
     total
 }
 
-pub fn sync(app: &AppHandle) {
+// プロセスタップの起動を別スレッドで行うと、メインスレッドのデバイス列挙と CoreAudio 内で待ち合って固まる
+pub fn request_sync(app: &AppHandle) {
+    let handle = app.clone();
+    if let Err(e) = app.run_on_main_thread(move || sync(&handle)) {
+        log::warn!("failed to schedule preroll sync: {e}");
+    }
+}
+
+fn sync(app: &AppHandle) {
     let state = app.state::<crate::state::AppState>();
     let recorder = state.recorder.lock().unwrap();
     if recorder.is_some() {
