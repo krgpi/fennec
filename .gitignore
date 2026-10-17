@@ -8,3 +8,5 @@ sidecar/FennecHelper/.build/
 *.log
 .DS_Store
 patches/whisper-rs-sys/whisper.cpp/
+# 署名 ID など手元の環境設定
+.mise.toml
