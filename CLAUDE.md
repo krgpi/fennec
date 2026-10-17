@@ -15,7 +15,7 @@ cargo test -p fennec-core               # 純ロジックのテストはここ�
 
 - **Node 22 必須**。親ディレクトリの `.tool-versions` が Node 20 を指しており mise が非対話シェルで活性化しないことがあるため、スクリプトから叩くときは `export PATH="$HOME/.local/share/mise/installs/node/22.23.1/bin:$PATH"` を明示する
 - **macOS で録音を検証するときは必ずバンドル版 `.app` を使う**。`pnpm tauri dev` は非バンドルバイナリのため TCC がダイアログを出さずサイレント拒否し、録音が「エラーなしの無音」になる（原因の切り分けに時間を溶かすポイント）
-- リリース: `scripts/release.sh`。CI は `.github/workflows/build.yml`（Windows/Linux はフルビルド、macOS は core テストのみ ― Swift ヘルパーが macOS 26 SDK を要求し GitHub ランナーでビルドできないため）
+- リリース: `scripts/release.sh`。macOS は `APPLE_SIGNING_IDENTITY`（Developer ID。未設定だと release.sh はエラーで止まる）で署名する。ad-hoc 署名だと designated requirement が cdhash になり、更新のたびにマイク・カレンダー等の TCC 許可が外れるため（エンタイトルメントは `src-tauri/Entitlements.plist`、Hardened Runtime 有効）。CI は `.github/workflows/build.yml`（Windows/Linux はフルビルド、macOS は core テストのみ ― Swift ヘルパーが macOS 26 SDK を要求し GitHub ランナーでビルドできないため）
 
 ## Architecture
 

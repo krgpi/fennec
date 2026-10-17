@@ -4,6 +4,9 @@
     "beforeBuildCommand": "bash scripts/build-helper.sh && node scripts/build-cli.mjs && pnpm build"
   },
   "bundle": {
-    "externalBin": ["binaries/fennec-helper", "binaries/fennec"]
+    "externalBin": ["binaries/fennec-helper", "binaries/fennec"],
+    "macOS": {
+      "entitlements": "Entitlements.plist"
+    }
   }
 }

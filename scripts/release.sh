@@ -21,6 +21,15 @@ if [ "$(uname -s)" != "Darwin" ] && [ "$(uname -s)" != "Linux" ]; then
     export FENNEC_NO_CUDA=1
 fi
 
+# ad-hoc 署名だと designated requirement が cdhash になり、更新のたびにマイク・カレンダー等の
+# TCC 許可が外れる。固定の証明書で署名して同一アプリと見なされるようにする
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+    echo "APPLE_SIGNING_IDENTITY is not set (e.g. \"Developer ID Application: <name> (<team id>)\")" >&2
+    echo "available identities:" >&2
+    security find-identity -v -p codesigning >&2
+    exit 1
+fi
+
 pnpm install --frozen-lockfile
 pnpm tauri build
 

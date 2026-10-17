@@ -35,7 +35,7 @@ Captures system audio and microphone input simultaneously, with real-time and po
 
 Every build is attached to a [GitHub Release](https://github.com/krgpi/fennec/releases). The current version is `0.0.1`; replace the version in the commands below when a newer one is out.
 
-Nothing is code-signed yet, so every platform shows an "unidentified developer" style warning on first launch.
+macOS builds are signed with a Developer ID but not notarized yet, and Windows / Linux builds are unsigned, so every platform shows an "unidentified developer" style warning on first launch.
 
 ### macOS — Homebrew
 
@@ -167,7 +167,7 @@ GitHub Releases is the source of truth; package managers pull from it.
 3. Publish the draft.
 4. Run `.github/workflows/publish-packages.yml` manually against the tag to update winget and AUR. (Both need their first version registered by hand — until then this workflow fails.)
 
-Not yet supported: Windows code signing, macOS signing / notarization, macOS x86_64, Linux aarch64, AppImage, winget / AUR packages.
+Not yet supported: Windows code signing, macOS notarization, macOS x86_64, Linux aarch64, AppImage, winget / AUR packages.
 
 ## Contributing
 
