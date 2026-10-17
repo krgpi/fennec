@@ -16,9 +16,16 @@ export default function RecordingTab() {
   const reminderEnabled = settings?.meetingReminderEnabled ?? false;
 
   useEffect(() => {
-    if (reminderEnabled) {
-      calendarApi.listCalendars().then(setCalendars).catch(console.error);
-    }
+    if (!reminderEnabled) return;
+    // ad-hoc 署名のアプリは更新のたびに TCC の許可が外れるため、有効のまま開いたときも取り直す
+    calendarApi
+      .requestAccess()
+      .then((granted) => {
+        setCalendarDenied(!granted);
+        return granted ? calendarApi.listCalendars() : [];
+      })
+      .then(setCalendars)
+      .catch(console.error);
   }, [reminderEnabled]);
 
   if (!settings) return null;
