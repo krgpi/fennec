@@ -51,11 +51,7 @@ pub fn perform_start(app: &AppHandle) -> Result<String, String> {
     let base_dir = state.save_directory(app);
     let (mic_device, live_pref, silence_auto_stop) = {
         let settings = state.settings.read().unwrap();
-        let mic_device = if settings.use_system_default_mic {
-            None
-        } else {
-            settings.mic_device_id.clone()
-        };
+        let mic_device = settings.effective_mic_device_id();
         let live_pref = settings.live_transcription_enabled.then(|| {
             (
                 settings.live_transcription_engine.clone(),
@@ -94,14 +90,17 @@ pub fn perform_start(app: &AppHandle) -> Result<String, String> {
         })
     });
 
+    let preroll = state.preroll.lock().unwrap();
     let controller = RecordingController::start(
         app,
         &base_dir,
         mic_device.as_deref(),
         live,
         silence_auto_stop,
+        preroll.as_ref().filter(|p| p.mic_device_id == mic_device),
     )
     .map_err(|e| format!("{e:#}"))?;
+    drop(preroll);
     let session_id = controller.session_id.clone();
     let folder = controller.folder.clone();
     *recorder = Some(controller);
@@ -168,7 +167,9 @@ fn finish_stop(
     model_id: String,
     locale: Option<String>,
 ) {
-    let outcome = match controller.stop(&app) {
+    let stopped = controller.stop(&app);
+    crate::recording::preroll::request_sync(&app);
+    let outcome = match stopped {
         Ok(o) => o,
         Err(e) => {
             log::error!("failed to stop recording: {e:#}");

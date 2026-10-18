@@ -54,6 +54,7 @@ pub struct Settings {
     pub diarization_enabled: bool,
     pub silence_auto_stop_enabled: bool,
     pub silence_auto_stop_minutes: u32,
+    pub preroll_enabled: bool,
     pub meeting_reminder_enabled: bool,
     pub meeting_reminder_minutes_before: u32,
     pub meeting_reminder_require_meeting_url: bool,
@@ -87,6 +88,7 @@ impl Default for Settings {
             diarization_enabled: false,
             silence_auto_stop_enabled: false,
             silence_auto_stop_minutes: default_silence_minutes(),
+            preroll_enabled: false,
             meeting_reminder_enabled: false,
             meeting_reminder_minutes_before: default_reminder_minutes(),
             meeting_reminder_require_meeting_url: true,
@@ -119,6 +121,14 @@ impl Settings {
         let tmp = path.with_extension("json.tmp");
         fs::write(&tmp, json)?;
         fs::rename(&tmp, path)
+    }
+
+    pub fn effective_mic_device_id(&self) -> Option<String> {
+        if self.use_system_default_mic {
+            None
+        } else {
+            self.mic_device_id.clone()
+        }
     }
 
     pub fn config_list(&self) -> Vec<(String, String)> {
@@ -192,6 +202,7 @@ mod tests {
         assert!(s.meeting_reminder_require_mic);
         assert!(!s.silence_auto_stop_enabled);
         assert_eq!(s.silence_auto_stop_minutes, 5);
+        assert!(!s.preroll_enabled);
         assert_eq!(s.hook_timeout_seconds, 30);
         assert_eq!(s.meeting_reminder_minutes_before, 5);
     }

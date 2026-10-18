@@ -1,4 +1,5 @@
 use crate::recording::controller::RecordingController;
+use crate::recording::preroll::Preroll;
 use crate::services::hooks::HookFire;
 use crate::transcription::job::TranscribeJob;
 use fennec_core::settings::Settings;
@@ -27,6 +28,7 @@ pub struct AppState {
     pub settings_path: PathBuf,
     pub agents_config_path: PathBuf,
     pub recorder: Mutex<Option<RecordingController>>,
+    pub preroll: Mutex<Option<Preroll>>,
     pub transcribe_job: Mutex<Option<TranscribeJob>>,
     pub model_download: Mutex<Option<Arc<AtomicBool>>>,
     pub minutes_job: Mutex<Option<MinutesJob>>,
@@ -45,6 +47,7 @@ impl AppState {
             settings_path,
             agents_config_path: config_dir.join(fennec_core::agents::AGENTS_CONFIG_FILE_NAME),
             recorder: Mutex::new(None),
+            preroll: Mutex::new(None),
             transcribe_job: Mutex::new(None),
             model_download: Mutex::new(None),
             minutes_job: Mutex::new(None),
