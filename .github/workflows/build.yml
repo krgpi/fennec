@@ -29,7 +29,8 @@ jobs:
       - run: cargo build -p fennec-core -p fennec-cli
 
   test-linux:
-    runs-on: ubuntu-latest
+    # libspa 0.8 (pipewire 0.8) fails to build against PipeWire 1.6 headers shipped by ubuntu-26.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
