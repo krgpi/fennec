@@ -96,22 +96,23 @@ impl Player {
         let thread = std::thread::Builder::new()
             .name("fennec-player".into())
             .spawn(move || {
-                let result = run_output_stream(
+                let stream = match build_output_stream(
                     device_name.as_deref(),
                     thread_shared,
                     tracks,
                     total_frames,
-                    stop_rx,
-                );
-                if let Err(e) = result {
-                    let _ = ready_tx.send(Err(e));
-                } else {
-                    let _ = ready_tx.send(Ok(()));
-                }
+                ) {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        let _ = ready_tx.send(Err(e));
+                        return;
+                    }
+                };
+                let _ = ready_tx.send(Ok(()));
+                let _ = stop_rx.recv();
+                drop(stream);
             })?;
 
-        // run_output_stream sends Ok only after building the stream; ready_rx
-        // therefore reports build errors before we return the Player
         match ready_rx.recv() {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(e),
@@ -177,13 +178,12 @@ impl Drop for Player {
     }
 }
 
-fn run_output_stream(
+fn build_output_stream(
     device_name: Option<&str>,
     shared: Arc<Shared>,
     tracks: Arc<Vec<Option<TrackData>>>,
     total_frames: u64,
-    stop_rx: mpsc::Receiver<()>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<cpal::Stream> {
     let host = cpal::default_host();
     let device = match device_name {
         Some(name) => host
@@ -247,9 +247,7 @@ fn run_output_stream(
         None,
     )?;
     stream.play()?;
-    let _ = stop_rx.recv();
-    drop(stream);
-    Ok(())
+    Ok(stream)
 }
 
 fn to_stereo_frames(samples: &[f32], channels: u16, rate: u32, out_rate: u32) -> Vec<[f32; 2]> {

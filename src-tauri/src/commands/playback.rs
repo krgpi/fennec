@@ -41,7 +41,7 @@ fn emit_position(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub fn player_load(
+pub async fn player_load(
     app: AppHandle,
     state: State<'_, AppState>,
     session_id: String,
@@ -72,8 +72,13 @@ pub fn player_load(
         }
     }
 
-    let paths: Vec<Option<&Path>> = vec![sys_path.as_deref(), mic_path.as_deref()];
-    let new_player = fennec_audio::Player::load(&paths).map_err(|e| format!("{e:#}"))?;
+    let (load_sys, load_mic) = (sys_path.clone(), mic_path.clone());
+    let new_player = tauri::async_runtime::spawn_blocking(move || {
+        let paths: Vec<Option<&Path>> = vec![load_sys.as_deref(), load_mic.as_deref()];
+        fennec_audio::Player::load(&paths).map_err(|e| format!("{e:#}"))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     let status = new_player.status();
     let alive = Arc::new(AtomicBool::new(true));
 
