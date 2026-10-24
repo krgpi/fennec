@@ -190,6 +190,49 @@ impl StreamDownmixResampler {
     }
 }
 
+pub struct StreamResampler {
+    out_rate: u32,
+    channels: usize,
+    carry: Vec<f32>,
+    pos: f64,
+}
+
+impl StreamResampler {
+    pub fn new(channels: u16, out_rate: u32, capacity: usize) -> Self {
+        Self {
+            out_rate,
+            channels: channels.max(1) as usize,
+            carry: Vec::with_capacity(capacity),
+            pos: 0.0,
+        }
+    }
+
+    pub fn push_into(&mut self, interleaved: &[f32], in_rate: u32, out: &mut Vec<f32>) {
+        out.clear();
+        if in_rate == self.out_rate && self.carry.is_empty() {
+            out.extend_from_slice(interleaved);
+            return;
+        }
+        let ch = self.channels;
+        self.carry.extend_from_slice(interleaved);
+        let frames = self.carry.len() / ch;
+        let ratio = in_rate as f64 / self.out_rate as f64;
+        while (self.pos as usize) + 1 < frames {
+            let idx = self.pos as usize;
+            let frac = (self.pos - idx as f64) as f32;
+            for c in 0..ch {
+                let a = self.carry[idx * ch + c];
+                let b = self.carry[(idx + 1) * ch + c];
+                out.push(a + (b - a) * frac);
+            }
+            self.pos += ratio;
+        }
+        let consumed = (self.pos as usize).min(frames);
+        self.carry.drain(..consumed * ch);
+        self.pos -= consumed as f64;
+    }
+}
+
 pub fn is_silent_audio(path: &Path, floor: f32) -> anyhow::Result<bool> {
     let (samples, rate, channels) = read_audio(path)?;
     if samples.is_empty() {
@@ -309,5 +352,39 @@ mod tests {
         let out2 = r.push(&[0.0]);
         assert_eq!(out1, vec![1.0]);
         assert_eq!(out2, vec![0.0]);
+    }
+
+    #[test]
+    fn rate_resampler_passes_through_at_same_rate() {
+        let mut r = StreamResampler::new(2, 48000, 0);
+        let mut out = Vec::new();
+        r.push_into(&[0.1, 0.2, 0.3, 0.4], 48000, &mut out);
+        assert_eq!(out, vec![0.1, 0.2, 0.3, 0.4]);
+    }
+
+    #[test]
+    fn rate_resampler_upsamples_16k_to_48k_keeping_channels() {
+        let mut r = StreamResampler::new(2, 48000, 0);
+        let mut out = Vec::new();
+        let mut total_frames = 0usize;
+        for _ in 0..100 {
+            let chunk: Vec<f32> = (0..160).flat_map(|_| [0.5f32, -0.5]).collect();
+            r.push_into(&chunk, 16000, &mut out);
+            assert!(out.chunks_exact(2).all(|f| f == [0.5, -0.5]));
+            total_frames += out.len() / 2;
+        }
+        assert!((total_frames as i64 - 48000).abs() < 4, "frames={total_frames}");
+    }
+
+    #[test]
+    fn rate_resampler_follows_rate_change_mid_stream() {
+        let mut r = StreamResampler::new(1, 48000, 0);
+        let mut out = Vec::new();
+        let mut total = 0usize;
+        r.push_into(&vec![0.0; 48000], 48000, &mut out);
+        total += out.len();
+        r.push_into(&vec![0.0; 16000], 16000, &mut out);
+        total += out.len();
+        assert!((total as i64 - 96000).abs() < 4, "total={total}");
     }
 }

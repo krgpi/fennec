@@ -18,7 +18,7 @@ pub mod system_windows;
 
 pub use decode::{
     decode_to_mono_16k, is_silent_audio, mixdown_mono, read_audio, read_wav, resample_mono,
-    StreamDownmixResampler, WHISPER_SAMPLE_RATE,
+    StreamDownmixResampler, StreamResampler, WHISPER_SAMPLE_RATE,
 };
 pub use level::{rms, rms_to_level};
 pub use mix::{export_mixed_audio, mix_files_to_mono, mix_tracks};

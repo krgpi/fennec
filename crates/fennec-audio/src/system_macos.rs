@@ -1,9 +1,12 @@
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use cidre::core_audio::hardware::sub_tap_keys as tap_keys;
 use cidre::core_audio::{aggregate_device_keys as agg_keys, sub_device_keys as sub_keys};
 use cidre::{cat, cf, core_audio as ca, ns, os};
+
+use crate::decode::StreamResampler;
 
 const SCRATCH_CAPACITY: usize = 32 * 1024;
 
@@ -26,6 +29,9 @@ struct IoCtx {
     interleaved: bool,
     kind: SampleKind,
     scratch: Vec<f32>,
+    device_rate: Arc<AtomicU32>,
+    resampler: StreamResampler,
+    resampled: Vec<f32>,
 }
 
 enum DeviceState {
@@ -45,6 +51,8 @@ pub struct SystemAudioCapture {
     kind: SampleKind,
     proc_id: Option<ca::DeviceIoProcId>,
     ctx: Option<Box<IoCtx>>,
+    device_rate: Arc<AtomicU32>,
+    rate_listener_on: Option<ca::Obj>,
 }
 
 impl SystemAudioCapture {
@@ -89,6 +97,8 @@ impl SystemAudioCapture {
             kind,
             proc_id: None,
             ctx: None,
+            device_rate: Arc::new(AtomicU32::new(asbd.sample_rate as u32)),
+            rate_listener_on: None,
         })
     }
 
@@ -111,17 +121,43 @@ impl SystemAudioCapture {
             }
         };
 
+        // the aggregate device follows the output device's rate (e.g. 16 kHz once a
+        // Bluetooth headset switches to HFP) while the tap ASBD keeps its initial rate
+        if let Ok(rate) = agg.nominal_sample_rate() {
+            self.device_rate.store(rate as u32, Ordering::Relaxed);
+        }
+        let agg_obj: ca::Obj = **agg;
+        if agg_obj
+            .add_prop_listener(
+                &ca::PropSelector::DEVICE_NOMINAL_SAMPLE_RATE.global_addr(),
+                rate_listener,
+                Arc::as_ptr(&self.device_rate).cast_mut(),
+            )
+            .is_ok()
+        {
+            self.rate_listener_on = Some(agg_obj);
+        }
+
+        let channels = self.asbd.channels_per_frame.max(1) as u16;
         let mut ctx = Box::new(IoCtx {
             on_chunk,
-            channels: self.asbd.channels_per_frame.max(1) as usize,
+            channels: channels as usize,
             interleaved: self.asbd.is_interleaved(),
             kind: self.kind,
             scratch: Vec::with_capacity(SCRATCH_CAPACITY),
+            device_rate: self.device_rate.clone(),
+            resampler: StreamResampler::new(
+                channels,
+                self.asbd.sample_rate as u32,
+                SCRATCH_CAPACITY,
+            ),
+            resampled: Vec::with_capacity(SCRATCH_CAPACITY * 4),
         });
 
         let proc_id = match agg.create_io_proc_id(io_proc, Some(ctx.as_mut())) {
             Ok(id) => id,
             Err(e) => {
+                self.remove_rate_listener();
                 self.state = DeviceState::Idle(agg);
                 return Err(anyhow::Error::new(e).context("AudioDeviceCreateIOProcID failed"));
             }
@@ -151,6 +187,7 @@ impl SystemAudioCapture {
                         let res = unsafe { AudioDeviceDestroyIOProcID(*dev, proc_id) };
                         debug_assert!(res.is_ok(), "AudioDeviceDestroyIOProcID failed: {res:?}");
                     }
+                    self.remove_rate_listener();
                     self.ctx = None;
                     self.state = DeviceState::Idle(agg);
                 }
@@ -162,7 +199,18 @@ impl SystemAudioCapture {
         }
     }
 
+    fn remove_rate_listener(&mut self) {
+        if let Some(obj) = self.rate_listener_on.take() {
+            let _ = obj.remove_prop_listener(
+                &ca::PropSelector::DEVICE_NOMINAL_SAMPLE_RATE.global_addr(),
+                rate_listener,
+                Arc::as_ptr(&self.device_rate).cast_mut(),
+            );
+        }
+    }
+
     fn rebuild_device(&mut self) {
+        self.remove_rate_listener();
         self.proc_id = None;
         self.ctx = None;
         let output_uid = cf::String::from_str(&self.output_uid);
@@ -240,6 +288,34 @@ fn sample_kind(asbd: &cat::AudioStreamBasicDesc) -> Result<SampleKind> {
     }
 }
 
+extern "C-unwind" fn rate_listener(
+    obj_id: ca::Obj,
+    _number_addresses: u32,
+    _addresses: *const ca::PropAddr,
+    device_rate: *mut AtomicU32,
+) -> os::Status {
+    if let (Some(device_rate), Ok(rate)) =
+        (unsafe { device_rate.as_ref() }, ca::Device(obj_id).nominal_sample_rate())
+    {
+        device_rate.store(rate as u32, Ordering::Relaxed);
+    }
+    os::Status::default()
+}
+
+fn deliver(ctx: &mut IoCtx, samples: &[f32]) {
+    let in_rate = ctx.device_rate.load(Ordering::Relaxed);
+    ctx.resampler.push_into(samples, in_rate, &mut ctx.resampled);
+    if !ctx.resampled.is_empty() {
+        (ctx.on_chunk)(&ctx.resampled);
+    }
+}
+
+fn deliver_scratch(ctx: &mut IoCtx) {
+    let scratch = std::mem::take(&mut ctx.scratch);
+    deliver(ctx, &scratch);
+    ctx.scratch = scratch;
+}
+
 extern "C" fn io_proc(
     _device: ca::Device,
     _now: &cat::AudioTimeStamp,
@@ -285,7 +361,7 @@ fn emit_interleaved(ctx: &mut IoCtx, buf: &cat::AudioBuf) {
             let samples = unsafe {
                 std::slice::from_raw_parts(buf.data as *const f32, buf.data_bytes_size as usize / 4)
             };
-            (ctx.on_chunk)(samples);
+            deliver(ctx, samples);
         }
         SampleKind::I16 => {
             let src = unsafe {
@@ -293,7 +369,7 @@ fn emit_interleaved(ctx: &mut IoCtx, buf: &cat::AudioBuf) {
             };
             ctx.scratch.clear();
             ctx.scratch.extend(src.iter().map(|&s| f32::from(s) / 32768.0));
-            (ctx.on_chunk)(&ctx.scratch);
+            deliver_scratch(ctx);
         }
         SampleKind::I32 => {
             let src = unsafe {
@@ -302,7 +378,7 @@ fn emit_interleaved(ctx: &mut IoCtx, buf: &cat::AudioBuf) {
             ctx.scratch.clear();
             ctx.scratch
                 .extend(src.iter().map(|&s| s as f32 / 2_147_483_648.0));
-            (ctx.on_chunk)(&ctx.scratch);
+            deliver_scratch(ctx);
         }
     }
 }
@@ -350,7 +426,7 @@ fn emit_planar(ctx: &mut IoCtx, bufs: &[cat::AudioBuf]) {
             }
         }
     }
-    (ctx.on_chunk)(&ctx.scratch);
+    deliver_scratch(ctx);
 }
 
 #[link(name = "CoreAudio", kind = "framework")]
