@@ -57,6 +57,40 @@ function MicSelect() {
   );
 }
 
+function PrerollSwitch() {
+  const { t } = useTranslation();
+  const { settings, update } = useSettings();
+  const recording = useRecording((s) => s.recording);
+
+  if (!settings) return null;
+
+  const on = settings.prerollEnabled;
+
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-300 disabled:opacity-50"
+      title={t("録音開始前の直近10分をさかのぼって録音に含めます。オンの間はマイクとPC音声を取り込み続けます。")}
+      disabled={recording}
+      onClick={() => update({ prerollEnabled: !on })}
+    >
+      <span
+        className={`relative inline-block w-7 h-4 rounded-full transition-colors ${
+          on ? "bg-red-500" : "bg-neutral-300 dark:bg-neutral-600"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+            on ? "translate-x-3" : ""
+          }`}
+        />
+      </span>
+      {t("直前10分を保持")}
+    </button>
+  );
+}
+
 function LevelMeter({ level, label }: { level: number; label: string }) {
   return (
     <div className="flex items-center gap-1" title={label}>
@@ -107,6 +141,7 @@ export default function Toolbar() {
         />
         {recording ? t("録音停止") : t("録音開始")}
       </button>
+      <PrerollSwitch />
       {recording && (
         <span className="text-sm tabular-nums text-red-600 dark:text-red-400 font-medium">
           {formatTime(duration)}

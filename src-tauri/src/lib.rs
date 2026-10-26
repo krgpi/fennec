@@ -44,6 +44,7 @@ pub fn run() {
             }
             window::setup(app.handle());
             calendar::monitor::start(app.handle().clone());
+            recording::preroll::request_sync(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

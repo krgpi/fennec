@@ -1,3 +1,4 @@
+use super::preroll::{self, LaneChunk, Preroll, Tap};
 use crate::events::{self, LiveTranscriptPayload, RecordingLevels, RecordingStatePayload};
 use anyhow::Context;
 use chrono::{Local, Utc};
@@ -306,57 +307,90 @@ fn make_live_lane(
     }))
 }
 
+enum LaneInput {
+    Owned(Box<dyn CaptureSource>),
+    Preroll(Tap),
+}
+
 struct CaptureLane {
-    source: Box<dyn CaptureSource>,
-    writer_tx: mpsc::Sender<Vec<f32>>,
+    input: LaneInput,
+    format: fennec_audio::AudioFormat,
+    writer_tx: mpsc::Sender<LaneChunk>,
     writer_handle: JoinHandle<anyhow::Result<()>>,
     live: Option<Arc<LiveLane>>,
 }
 
 impl CaptureLane {
-    fn start(
-        mut source: Box<dyn CaptureSource>,
+    fn open(
+        input: LaneInput,
+        format: fennec_audio::AudioFormat,
         path: PathBuf,
         peak: Arc<PeakLevel>,
         live: Option<Arc<LiveLane>>,
     ) -> anyhow::Result<Self> {
-        let format = source.format();
         let mut writer = WavFileWriter::create(&path, format)
             .with_context(|| format!("failed to create {}", path.display()))?;
-        let (writer_tx, writer_rx) = mpsc::channel::<Vec<f32>>();
+        let (writer_tx, writer_rx) = mpsc::channel::<LaneChunk>();
+        let writer_live = live.clone();
         let writer_handle = std::thread::Builder::new()
             .name("fennec-wav-writer".into())
             .spawn(move || -> anyhow::Result<()> {
-                while let Ok(chunk) = writer_rx.recv() {
-                    writer.write(&chunk)?;
+                let mut process = |chunk: &[f32]| -> anyhow::Result<()> {
+                    writer.write(chunk)?;
+                    if let Some(live) = &writer_live {
+                        let resampled = live.resampler.lock().unwrap().push(chunk);
+                        if !resampled.is_empty() {
+                            live.feed(resampled);
+                        }
+                    }
+                    Ok(())
+                };
+                while let Ok(message) = writer_rx.recv() {
+                    match message {
+                        LaneChunk::Samples(chunk) => {
+                            peak.update_max(rms(&chunk));
+                            process(&chunk)?;
+                        }
+                        LaneChunk::Buffered(ring) => {
+                            for block in ring {
+                                let chunk: Vec<f32> =
+                                    block.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
+                                process(&chunk)?;
+                            }
+                        }
+                    }
                 }
                 writer.finalize()?;
                 Ok(())
             })?;
 
-        let tx = writer_tx.clone();
-        let chunk_live = live.clone();
-        source.start(Arc::new(move |chunk: &[f32]| {
-            peak.update_max(rms(chunk));
-            let _ = tx.send(chunk.to_vec());
-            if let Some(live) = &chunk_live {
-                let resampled = live.resampler.lock().unwrap().push(chunk);
-                if !resampled.is_empty() {
-                    live.feed(resampled);
-                }
-            }
-        }))?;
-
         Ok(Self {
-            source,
+            input,
+            format,
             writer_tx,
             writer_handle,
             live,
         })
     }
 
+    fn start_owned(&mut self, lead_seconds: f64) -> anyhow::Result<()> {
+        let LaneInput::Owned(source) = &mut self.input else {
+            return Ok(());
+        };
+        let _ = self
+            .writer_tx
+            .send(LaneChunk::Buffered(preroll::silence(self.format, lead_seconds)));
+        let tx = self.writer_tx.clone();
+        source.start(Arc::new(move |chunk: &[f32]| {
+            let _ = tx.send(LaneChunk::Samples(chunk.to_vec()));
+        }))
+    }
+
     fn stop(mut self) -> anyhow::Result<Vec<TimedSegment>> {
-        self.source.stop();
+        match &mut self.input {
+            LaneInput::Owned(source) => source.stop(),
+            LaneInput::Preroll(tap) => tap.lock().unwrap().detach(),
+        }
         drop(self.writer_tx);
         self.writer_handle
             .join()
@@ -401,8 +435,10 @@ impl RecordingController {
         mic_device_id: Option<&str>,
         live: Option<LiveConfig>,
         silence_auto_stop: Option<SilenceAutoStop>,
+        preroll: Option<&Preroll>,
     ) -> anyhow::Result<Self> {
-        let session_id = session_id_for(Local::now());
+        let lead_ms = preroll.map_or(0.0, |p| p.buffered_seconds()) * 1000.0;
+        let session_id = session_id_for(Local::now() - chrono::Duration::milliseconds(lead_ms as i64));
         let folder = base_dir.join(&session_id);
         std::fs::create_dir_all(&folder)
             .with_context(|| format!("failed to create session folder {}", folder.display()))?;
@@ -431,65 +467,106 @@ impl RecordingController {
             None => None,
         };
 
-        let build_live_lane = |source: &Box<dyn CaptureSource>, name: &'static str| {
-            resolved_live.as_ref().and_then(|live| {
-                match make_live_lane(app, live, name, source.format()) {
+        let open_lane = |input: Option<(LaneInput, fennec_audio::AudioFormat)>,
+                         name: &'static str,
+                         file: &str,
+                         peak: Arc<PeakLevel>|
+         -> anyhow::Result<Option<CaptureLane>> {
+            let Some((input, format)) = input else {
+                return Ok(None);
+            };
+            let live_lane = resolved_live.as_ref().and_then(|live| {
+                match make_live_lane(app, live, name, format) {
                     Ok(lane) => Some(lane),
                     Err(e) => {
                         log::warn!("live lane unavailable for {name}: {e:#}");
                         None
                     }
                 }
-            })
+            });
+            CaptureLane::open(input, format, folder.join(file), peak, live_lane).map(Some)
         };
 
-        let sys_lane = match new_system_capture(true) {
-            Ok(source) => {
-                let live_lane = build_live_lane(&source, "system");
-                Some(CaptureLane::start(
-                    source,
-                    folder.join(&sys_file),
-                    sys_peak.clone(),
-                    live_lane,
-                )?)
-            }
-            Err(e) => {
-                log::warn!("system audio capture unavailable: {e:#}");
-                None
-            }
+        let sys_input = match preroll.and_then(|p| p.sys_tap()) {
+            Some((tap, format)) => Some((LaneInput::Preroll(tap), format)),
+            None => match new_system_capture(true) {
+                Ok(source) => {
+                    let format = source.format();
+                    Some((LaneInput::Owned(source), format))
+                }
+                Err(e) => {
+                    log::warn!("system audio capture unavailable: {e:#}");
+                    None
+                }
+            },
         };
+        let mut sys_lane = open_lane(sys_input, "system", &sys_file, sys_peak.clone())?;
 
-        let mic_lane = match new_mic_capture(mic_device_id, DEFAULT_MIC_GAIN) {
-            Ok(source) => {
-                let live_lane = build_live_lane(&source, "mic");
-                Some(CaptureLane::start(
-                    source,
-                    folder.join(&mic_file),
-                    mic_peak.clone(),
-                    live_lane,
-                )?)
-            }
-            Err(e) => {
-                log::warn!("mic capture unavailable: {e:#}");
-                None
-            }
+        let mic_input = match preroll.and_then(|p| p.mic_tap()) {
+            Some((tap, format)) => Some((LaneInput::Preroll(tap), format)),
+            None => match new_mic_capture(mic_device_id, DEFAULT_MIC_GAIN) {
+                Ok(source) => {
+                    let format = source.format();
+                    Some((LaneInput::Owned(source), format))
+                }
+                Err(e) => {
+                    log::warn!("mic capture unavailable: {e:#}");
+                    None
+                }
+            },
         };
+        let mut mic_lane = open_lane(mic_input, "mic", &mic_file, mic_peak.clone())?;
 
         if sys_lane.is_none() && mic_lane.is_none() {
             let _ = std::fs::remove_dir_all(&folder);
             anyhow::bail!("no capture source available");
         }
 
-        let mut metadata = SessionMetadata::new(Utc::now());
+        let taps: Vec<_> = [&sys_lane, &mic_lane]
+            .into_iter()
+            .flatten()
+            .filter_map(|lane| match &lane.input {
+                LaneInput::Preroll(tap) => {
+                    Some((tap.clone(), lane.format, lane.writer_tx.clone()))
+                }
+                LaneInput::Owned(_) => None,
+            })
+            .collect();
+        let preroll_seconds = if taps.is_empty() {
+            0.0
+        } else {
+            preroll::attach(&taps)
+        };
+        drop(taps);
+        let preroll_duration = std::time::Duration::from_secs_f64(preroll_seconds);
+        let started_at = Instant::now()
+            .checked_sub(preroll_duration)
+            .unwrap_or_else(Instant::now);
+
+        let mut metadata = SessionMetadata::new(
+            Utc::now() - chrono::Duration::from_std(preroll_duration).unwrap_or_default(),
+        );
         metadata.system_audio_file = sys_lane.is_some().then(|| sys_file.clone());
         metadata.mic_audio_file = mic_lane.is_some().then(|| mic_file.clone());
-        save_metadata(&folder, &metadata)?;
+
+        let started = [sys_lane.as_mut(), mic_lane.as_mut()]
+            .into_iter()
+            .flatten()
+            .try_for_each(|lane| lane.start_owned(preroll_seconds))
+            .and_then(|()| Ok(save_metadata(&folder, &metadata)?));
+        if let Err(e) = started {
+            for lane in [sys_lane, mic_lane].into_iter().flatten() {
+                let _ = lane.stop();
+            }
+            return Err(e);
+        }
 
         let tick_stop = Arc::new(AtomicBool::new(false));
         spawn_tick(
             app.clone(),
             session_id.clone(),
             tick_stop.clone(),
+            started_at,
             sys_peak,
             mic_peak,
             silence_auto_stop,
@@ -499,7 +576,7 @@ impl RecordingController {
             session_id,
             folder,
             live_engine: resolved_live.as_ref().map(|l| l.engine_name()),
-            started_at: Instant::now(),
+            started_at,
             sys_lane,
             mic_lane,
             metadata,
@@ -567,6 +644,7 @@ fn spawn_tick(
     app: AppHandle,
     session_id: String,
     stop: Arc<AtomicBool>,
+    started: Instant,
     sys_peak: Arc<PeakLevel>,
     mic_peak: Arc<PeakLevel>,
     silence_auto_stop: Option<SilenceAutoStop>,
@@ -575,7 +653,6 @@ fn spawn_tick(
     const SILENCE_RMS_THRESHOLD: f32 = 0.002;
     const NO_INPUT_GRACE_TICKS: u32 = 40;
 
-    let started = Instant::now();
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(250));
         let mut ticks = 0u32;

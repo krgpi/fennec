@@ -318,5 +318,7 @@
   "設定ファイルを開く": "Open config file",
   "設定ファイルを作成": "Create config file",
   "再読み込み": "Reload",
+  "直前10分を保持": "Keep last 10 min",
+  "録音開始前の直近10分をさかのぼって録音に含めます。オンの間はマイクとPC音声を取り込み続けます。": "Includes the 10 minutes before you press record. While on, the mic and system audio are captured continuously.",
   "引数テンプレートでは {prompt} {model} {modelArgs} {output} が使えます。promptVia を stdin にすると標準入力でプロンプトを渡し、outputVia を file にすると {output} のファイルから結果を読みます。": "Argument templates accept {prompt} {model} {modelArgs} {output}. Set promptVia to stdin to pass the prompt via standard input, and outputVia to file to read the result from the {output} file."
 }
